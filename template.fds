@@ -1,0 +1,120 @@
+&HEAD CHID='out_${identifier}'/
+&TIME T_END=600/
+
+!! DOMAIN
+&MESH IJK=40,40,50, XB=0,10,0,10,0,40, MULT_ID='mm',TRNZ_ID='TRNZ'/
+&MULT ID='mm', DX=10,DY=10,I_UPPER=9,J_UPPER=9/
+&CATF OTHER_FILES='../Auxiliary_Files/TRN.fds'/
+
+&VENT DB='XMIN', SURF_ID='OPEN'/
+&VENT DB='XMAX', SURF_ID='OPEN'/
+&VENT DB='YMIN', SURF_ID='OPEN'/
+&VENT DB='YMAX', SURF_ID='OPEN'/
+&VENT DB='ZMAX', SURF_ID='OPEN'/
+
+! Constant inflow
+&WIND SPEED=4.6, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
+
+!! IGNITION
+&SURF ID='IGN FIRE', HRRPUA=500., COLOR='RED', RAMP_Q='fireramp' /
+&RAMP ID='fireramp', T= 30., F=0. /
+&RAMP ID='fireramp', T=31., F=1. /
+&RAMP ID='fireramp', T=41., F=1. /
+&RAMP ID='fireramp', T=42., F=0. /
+&VENT XB=10,11,25,75,0,0, SURF_ID='IGN FIRE'/
+
+! SURFACE FUEL
+! Litter surface
+&SURF ID                      = 'surface-litter'
+      MATL_ID                 = 'GENERIC VEGETATION'
+      MATL_MASS_FRACTION      = 1.0
+      MOISTURE_FRACTION       = 0.15
+      BLOWING                 = T
+      SURFACE_VOLUME_RATIO    = 8000.
+      LENGTH                  = 0.10      
+      GEOMETRY                = 'CYLINDRICAL' /
+&PART ID='surface-litter', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='surface-litter'
+      QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='GOLD',
+      EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
+&INIT PART_ID='surface-litter', XB=0., 200., 0., 200., 0.00, 0.061, MASS_PER_VOLUME=11.95, N_PARTICLES_PER_CELL=1 /
+
+! Soil
+&SURF ID                      = 'ground'
+      DEFAULT                 = .TRUE.
+      MATL_ID                 = 'Soil'
+      THICKNESS               = 0.1
+      COLOR                   = 'SANDY BROWN'/
+&MATL ID='Soil'
+      CONDUCTIVITY = 0.25
+      SPECIFIC_HEAT = 2.
+      DENSITY = 1300. /
+
+!! CANOPY
+! Douglas-fir
+&SURF ID                        = 'douglas-fir'
+      MATL_ID                   = 'GENERIC VEGETATION'
+      MATL_MASS_FRACTION        = 1.0
+      MOISTURE_FRACTION         = 1.0
+      BLOWING                   = T
+      SURFACE_VOLUME_RATIO      = 3422.
+      LENGTH                    = 0.05
+      GEOMETRY                  = 'CYLINDRICAL' /
+&PART ID='douglas-fir', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='douglas-fir'
+      QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='FOREST GREEN',
+      EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
+&INIT PART_ID='douglas-fir', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../Auxiliary_Files/${bdf_file}' /
+
+
+! Ponderosa pine
+!SURF ID                        = 'ponderosa-pine'
+      MATL_ID                   = 'GENERIC VEGETATION'
+      MATL_MASS_FRACTION        = 1.0
+      MOISTURE_FRACTION         = 1.0
+      BLOWING                   = T
+      SURFACE_VOLUME_RATIO      = 3588.
+      LENGTH                    = 0.10
+      GEOMETRY                  = 'CYLINDRICAL' /
+!PART ID='ponderosa-pine', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='ponderosa-pine'
+      QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='BURNT ORANGE ',
+      EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
+!INIT PART_ID='ponderosa-pine', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../Auxiliary_Files/fia_part_3588.bdf' /
+
+&CATF OTHER_FILES='../Auxiliary_Files/generic_vegetation_1R_MATL.fds'/
+
+&INIT ID='surface-litter_1', PART_ID='surface-litter', N_PARTICLES=1, XYZ=12,38,0.05/
+
+
+!! OUTPUTS
+&SLCF PBY=50, QUANTITY='VELOCITY'/
+&SLCF PBY=50, QUANTITY='HRRPUV'/
+&SLCF PBZ=0.075, QUANTITY='VELOCITY',VECTOR=T/
+&SLCF PBZ=1, QUANTITY='VELOCITY',VECTOR=T/
+&SLCF PBZ=10, QUANTITY='VELOCITY',VECTOR=T/
+
+
+!DEVC ID='fireline intensity', XB=50,100,75,125,0,50, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', UNITS='kW/m', CONVERSION_FACTOR=0.02/
+!DEVC ID='litter dry mass', XB=50,100,75,125,0,1, QUANTITY='SURFACE DENSITY', SURF_ID='surface-litter', MATL_ID='GENERIC VEGETATION', PART_ID='surface-litter', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+!DEVC ID='douglas-fir dry mass', XB=50,100,75,125,0,50, QUANTITY='SURFACE DENSITY', SURF_ID='douglas-fir', MATL_ID='GENERIC VEGETATION', PART_ID='douglas-fir', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+!DEVC ID='ponderosa-pine dry mass', XB=50,100,75,125,0,50, QUANTITY='SURFACE DENSITY', SURF_ID='ponderosa-pine', MATL_ID='GENERIC VEGETATION', PART_ID='ponderosa-pine', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+
+! Devices below control the kill condition for the simulation
+&DEVC ID='KILL-DEVICE-1', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 15, 0.05, IOR=3 /
+&DEVC ID='KILL-DEVICE-2', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 30, 0.05, IOR=3 /
+&DEVC ID='KILL-DEVICE-3', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 45, 0.05, IOR=3 /
+&DEVC ID='KILL-DEVICE-4', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 60, 0.05, IOR=3 /
+&DEVC ID='KILL-DEVICE-5', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 75, 0.05, IOR=3 /
+
+! Lines below define the kill condition when mass flux activates the kill device conditions
+&CTRL ID='CTRL-KILL-1', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-1' /
+&CTRL ID='CTRL-KILL-2', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-2' /
+&CTRL ID='CTRL-KILL-3', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-3' /
+&CTRL ID='CTRL-KILL-4', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-4' /
+&CTRL ID='CTRL-KILL-5', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-5' /
+
+! Flame height
+! CATF OTHER_FILES='../Auxiliary_Files/fia_devc_lines.fds'/
+! CATF OTHER_FILES='../Auxiliary_Files/sensor_array_devc_lines.fds'/
+
+! DUMP DT_PART=10,CFL_FILE=T,DT_SLCF=1,DT_DEVC=0.5,DT_SMOKE3D=1,CFL_FILE=T/
+
+&TAIL /
