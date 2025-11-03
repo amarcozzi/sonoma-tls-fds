@@ -5,8 +5,7 @@ from tqdm import tqdm
 
 def setup_simulations():
     """
-    Sets up simulation directories and input files based on .bdf files
-    using the pathlib module.
+    Sets up simulation directories, input files, and an identifiers list based on .bdf files
     """
     try:
         # Define paths relative to the script's location
@@ -16,6 +15,7 @@ def setup_simulations():
         aux_files_dir = root_dir / 'Auxiliary_Files'
         simulations_dir = root_dir / 'simulations'
         template_path = root_dir / 'template.fds'
+        identifiers_path = root_dir / 'identifiers.txt'
     except NameError:
         # Handle case where __file__ is not defined (e.g., interactive interpreter)
         print("Error: This script is intended to be run as a file.", file=sys.stderr)
@@ -64,13 +64,12 @@ def setup_simulations():
         output_fds_path = sim_path / 'input.fds'
         output_fds_path.write_text(new_fds_content)
 
-    print(f"\nSuccessfully created {len(identifiers)} simulation cases.")
+    # Write the identifiers to a file for the Slurm script
+    sorted_identifiers = sorted(identifiers)
+    identifiers_path.write_text('\n'.join(sorted_identifiers) + '\n')
     
-    # Format identifiers for bash array
-    # Using sorted() to ensure a consistent order
-    bash_array_string = ' '.join(f'"{i}"' for i in sorted(identifiers))
-    print("\nIdentifiers for bash script array:")
-    print(f"({bash_array_string})")
+    print(f"\nSuccessfully created {len(identifiers)} simulation cases.")
+    print(f"A list of identifiers has been saved to: {identifiers_path}")
 
 
 if __name__ == "__main__":
