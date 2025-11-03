@@ -1,1 +1,1 @@
-srun -A $ACCOUNT setup_simulations.py
+srun -A $ACCOUNT python setup_simulations.py
