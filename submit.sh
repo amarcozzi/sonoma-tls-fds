@@ -2,8 +2,7 @@
 
 #SBATCH -J FDS_Sonoma
 #SBATCH --nodes=4
-#SBATCH -n 1 
-#SBATCH --cpus-per-task 100
+#SBATCH --ntasks-per-node=25
 #SBATCH --mem-per-cpu=2G
 #SBATCH -t 5-0
 #SBATCH -A umontana_fire_modeling
