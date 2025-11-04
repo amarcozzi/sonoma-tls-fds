@@ -10,13 +10,10 @@
 #SBATCH --array=0-25%4
 
 # --- Environment Setup ---
-module load intel-oneapi-compilers intel-oneapi-mkl
+module load openmpi gcc
 
-source /project/umontana_fire_modeling/anthony.marcozzi/miniforge3/etc/profile.d/conda.sh
-conda activate fds
-
-export FI_PROVIDER=verbs
-export I_MPI_FABRICS=shm:ofi
+# export FI_PROVIDER=verbs
+# export I_MPI_FABRICS=shm:ofi
 
 # Read the sorted list of simulation IDs from a file into a bash array
 mapfile -t SIM_IDS < <(sort identifiers.txt)
@@ -35,6 +32,6 @@ echo "Starting Slurm Task ID: ${SLURM_ARRAY_TASK_ID}, Simulation: ${CURRENT_SIM_
 
 # Launch the single, parallel FDS simulation.
 # srun automatically uses the resources allocated to this specific array task (--nodes=4, --ntasks=100)
-srun ~/fds/Build/fds_impi_intel_linux input.fds >> ${LOG_FILE} 2>&1
+srun ~/fds/Build/fds_ompi_gnu_linux input.fds >> ${LOG_FILE} 2>&1
 
 echo "Job ${CURRENT_SIM_ID} finished." >> ${LOG_FILE}
