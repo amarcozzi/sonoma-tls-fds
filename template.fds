@@ -1,18 +1,19 @@
 &HEAD CHID='out_${identifier}'/
 &TIME T_END=600/
 
-!! DOMAIN
+!! DOMAIN AND MESH
 &MESH IJK=40,40,50, XB=0,10,0,10,0,40, MULT_ID='mm',TRNZ_ID='TRNZ'/
 &MULT ID='mm', DX=10,DY=10,I_UPPER=8,J_UPPER=8/
 &CATF OTHER_FILES='../../Auxiliary_Files/TRN.fds'/
 
+!! BOUNDARY CONDITIONS
 &VENT DB='XMIN', SURF_ID='OPEN'/
 &VENT DB='XMAX', SURF_ID='OPEN'/
 &VENT DB='YMIN', SURF_ID='OPEN'/
 &VENT DB='YMAX', SURF_ID='OPEN'/
 &VENT DB='ZMAX', SURF_ID='OPEN'/
 
-! Constant inflow
+!! WIND FIELD
 &WIND SPEED=4.6, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
 
 !! IGNITION
@@ -23,34 +24,31 @@
 &RAMP ID='fireramp', T=42., F=0. /
 &VENT XB=10,11,25,75,0,0, SURF_ID='IGN FIRE'/
 
-! SURFACE FUEL
-! Litter surface
-&SURF ID                      = 'surface-litter'
-      MATL_ID                 = 'GENERIC VEGETATION'
-      MATL_MASS_FRACTION      = 1.0
-      MOISTURE_FRACTION       = 0.15
-      BLOWING                 = T
-      SURFACE_VOLUME_RATIO    = 8000.
-      LENGTH                  = 0.10      
-      GEOMETRY                = 'CYLINDRICAL' /
-&PART ID='surface-litter', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='surface-litter'
-      QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='GOLD',
-      EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
-&INIT PART_ID='surface-litter', XB=0., 200., 0., 200., 0.00, 0.061, MASS_PER_VOLUME=11.95, N_PARTICLES_PER_CELL=1 /
-
-! Soil
-&SURF ID                      = 'ground'
+!! SURFACE FUEL - BOUNDARY FUEL MODEL
+! This surface defines the ground layer for the entire domain.
+! It consists of a top layer of vegetation and a bottom layer of soil.
+! MASS_PER_VOLUME activates the porous boundary fuel model for the vegetation layer.
+&SURF ID                      = 'LITTER_BED'
       DEFAULT                 = .TRUE.
-      MATL_ID                 = 'Soil'
-      THICKNESS               = 0.1
-      COLOR                   = 'SANDY BROWN'/
+      MATL_ID(1,1)            = 'GENERIC VEGETATION'
+      THICKNESS(1)            = 0.061
+      MASS_PER_VOLUME(1)      = 11.95
+      MOISTURE_FRACTION(1)    = 0.15
+      SURFACE_VOLUME_RATIO(1) = 8000.
+      DRAG_COEFFICIENT(1)      = 2.8
+      MATL_ID(2,1)            = 'Soil'
+      THICKNESS(2)            = 0.1
+      COLOR                   = 'GOLD' /
+
+! Soil Material properties used by the LITTER_BED surface
 &MATL ID='Soil'
       CONDUCTIVITY = 0.25
       SPECIFIC_HEAT = 2.
       DENSITY = 1300. /
 
-!! CANOPY
-! Douglas-fir
+
+!! CANOPY - PARTICLE MODEL
+! Surface properties for canopy particles (Douglas-fir needles)
 &SURF ID                        = 'douglas-fir'
       MATL_ID                   = 'GENERIC VEGETATION'
       MATL_MASS_FRACTION        = 1.0
@@ -59,62 +57,123 @@
       SURFACE_VOLUME_RATIO      = 3422.
       LENGTH                    = 0.05
       GEOMETRY                  = 'CYLINDRICAL' /
+
+! Particle class definition for canopy elements
 &PART ID='douglas-fir', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='douglas-fir'
       QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='FOREST GREEN',
       EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
+
+! Initialization of canopy particles from a bulk density file
 &INIT PART_ID='douglas-fir', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../../Auxiliary_Files/${bdf_file}' /
 
-
-! Ponderosa pine
-!SURF ID                        = 'ponderosa-pine'
-      MATL_ID                   = 'GENERIC VEGETATION'
-      MATL_MASS_FRACTION        = 1.0
-      MOISTURE_FRACTION         = 1.0
-      BLOWING                   = T
-      SURFACE_VOLUME_RATIO      = 3588.
-      LENGTH                    = 0.10
-      GEOMETRY                  = 'CYLINDRICAL' /
-!PART ID='ponderosa-pine', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='ponderosa-pine'
-      QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='BURNT ORANGE ',
-      EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
-!INIT PART_ID='ponderosa-pine', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../../Auxiliary_Files/fia_part_3588.bdf' /
-
+! Include the material properties for GENERIC VEGETATION from an external file
 &CATF OTHER_FILES='../../Auxiliary_Files/generic_vegetation_1R_MATL.fds'/
 
-&INIT ID='surface-litter_1', PART_ID='surface-litter', N_PARTICLES=1, XYZ=12,38,0.05/
-
-
 !! OUTPUTS
-&SLCF PBY=50, QUANTITY='VELOCITY'/
-&SLCF PBY=50, QUANTITY='HRRPUV'/
-&SLCF PBZ=0.075, QUANTITY='VELOCITY',VECTOR=T/
-&SLCF PBZ=1, QUANTITY='VELOCITY',VECTOR=T/
-&SLCF PBZ=10, QUANTITY='VELOCITY',VECTOR=T/
 
+! -----------------------------------------------------------------------------
+! RATE OF SPREAD (ROS)
+! An array of devices to record the fire arrival time along the domain centerline.
+! -----------------------------------------------------------------------------
+&DEVC ID='ROS_line', PROP_ID='ROS_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
+&PROP ID='ROS_sensor', QUANTITY='FIRE ARRIVAL TIME', UNITS='s' /
 
-!DEVC ID='fireline intensity', XB=50,100,75,125,0,50, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', UNITS='kW/m', CONVERSION_FACTOR=0.02/
-!DEVC ID='litter dry mass', XB=50,100,75,125,0,1, QUANTITY='SURFACE DENSITY', SURF_ID='surface-litter', MATL_ID='GENERIC VEGETATION', PART_ID='surface-litter', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
-!DEVC ID='douglas-fir dry mass', XB=50,100,75,125,0,50, QUANTITY='SURFACE DENSITY', SURF_ID='douglas-fir', MATL_ID='GENERIC VEGETATION', PART_ID='douglas-fir', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
-!DEVC ID='ponderosa-pine dry mass', XB=50,100,75,125,0,50, QUANTITY='SURFACE DENSITY', SURF_ID='ponderosa-pine', MATL_ID='GENERIC VEGETATION', PART_ID='ponderosa-pine', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+! -----------------------------------------------------------------------------
+! FLAME HEIGHT, TILT, and LENGTH
+! A set of control functions and devices to calculate flame dimensions at x=75 m.
+! -----------------------------------------------------------------------------
+! Step 1: Get the vertical HRR profile by integrating HRRPUV over horizontal slices.
+&DEVC ID='HRR_x75', Z_ID='z', XBP=70,80, 45,55, 0.1,20, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', STATISTICS_START=10., POINTS=100/
 
-! Devices below control the kill condition for the simulation
+! Step 2: Calculate Flame Height (H) as the 97th percentile of the HRR profile.
+&CTRL ID='H_x75', FUNCTION_TYPE='PERCENTILE', INPUT_ID='HRR_x75', PERCENTILE=0.97 /
+
+! Step 3: Find the x,y location of the maximum temperature near the flame tip to determine tilt.
+&DEVC ID='x_max_x75', XB=70,80, 45,55, 9.0,9.2, QUANTITY='TEMPERATURE', SPATIAL_STATISTIC='MAXLOC X' /
+&DEVC ID='y_max_x75', XB=70,80, 45,55, 9.0,9.2, QUANTITY='TEMPERATURE', SPATIAL_STATISTIC='MAXLOC Y' /
+
+! Step 4: Use a series of math functions to calculate tilt angle and flame length (L = H / cos(tilt)).
+&CTRL ID='x2_x75', FUNCTION_TYPE='POWER', INPUT_ID='x_max_x75','CONSTANT', CONSTANT=2 /
+&CTRL ID='y2_x75', FUNCTION_TYPE='POWER', INPUT_ID='y_max_x75','CONSTANT', CONSTANT=2 /
+&CTRL ID='r2_x75', FUNCTION_TYPE='SUM', INPUT_ID='x2_x75','y2_x75' /
+&CTRL ID='r_x75', FUNCTION_TYPE='POWER', INPUT_ID='r2_x75','CONSTANT', CONSTANT=0.5 /
+&CTRL ID='r/9_x75', FUNCTION_TYPE='DIVIDE', INPUT_ID='r_x75','CONSTANT', CONSTANT=9 /
+&CTRL ID='tilt_rad_x75', FUNCTION_TYPE='ATAN', INPUT_ID='r/9_x75' /
+&CTRL ID='tilt_deg_x75', FUNCTION_TYPE='MULTIPLY', INPUT_ID='tilt_rad_x75','CONSTANT', CONSTANT=57.296 /
+&CTRL ID='cos_theta_x75', FUNCTION_TYPE='COS', INPUT_ID='tilt_rad_x75' /
+&CTRL ID='L_x75', FUNCTION_TYPE='DIVIDE', INPUT_ID='H_x75','cos_theta_x75' /
+
+! Step 5: Output the final calculated values for height, tilt, and length.
+&DEVC ID='Flame Height (x=75)', CTRL_ID='H_x75', QUANTITY='CONTROL VALUE', UNITS='m' /
+&DEVC ID='Flame Tilt (x=75)', CTRL_ID='tilt_deg_x75', QUANTITY='CONTROL VALUE', UNITS='deg' /
+&DEVC ID='Flame Length (x=75)', CTRL_ID='L_x75', QUANTITY='CONTROL VALUE', UNITS='m' /
+
+! -----------------------------------------------------------------------------
+! VERTICAL TEMPERATURE & WIND PROFILES
+! A vertical array of devices at x=75m to measure temperature and velocity components.
+! -----------------------------------------------------------------------------
+&DEVC ID='Temp_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='TEMPERATURE', POINTS=40, TIME_HISTORY=T/
+&DEVC ID='U_Vel_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='U-VELOCITY', POINTS=40, TIME_HISTORY=T/
+&DEVC ID='V_Vel_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='V-VELOCITY', POINTS=40, TIME_HISTORY=T/
+&DEVC ID='W_Vel_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='W-VELOCITY', POINTS=40, TIME_HISTORY=T/
+
+! -----------------------------------------------------------------------------
+! HEAT FLUX TO FUEL BED
+! A line of devices measuring radiative and convective heat flux to the ground.
+! -----------------------------------------------------------------------------
+&DEVC ID='rad_flux_line', PROP_ID='rad_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
+&DEVC ID='conv_flux_line', PROP_ID='conv_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
+&PROP ID='rad_sensor', QUANTITY='RADIATIVE HEAT FLUX' /
+&PROP ID='conv_sensor', QUANTITY='CONVECTIVE HEAT FLUX' /
+
+! -----------------------------------------------------------------------------
+! FUEL CONSUMPTION
+! -----------------------------------------------------------------------------
+! Measures the total mass of the surface fuel layer over the entire domain.
+&DEVC ID='litter dry mass', XB=0., 200., 0., 200., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+! Measures the total mass of all canopy particles in the simulation.
+&DEVC ID='canopy_mass', QUANTITY='PARTICLE MASS', PART_ID='douglas-fir', SPATIAL_STATISTIC='SUM' /
+
+! -----------------------------------------------------------------------------
+! TURBULENT KINETIC ENERGY (TKE)
+! TKE is composed of a resolved part and a subgrid-scale (SGS) part.
+! The resolved part must be calculated in post-processing from the velocity time histories.
+! The SGS part is output directly.
+! -----------------------------------------------------------------------------
+! Devices to record instantaneous velocity at a point (x,y,z) = (75,50,5) for post-processing.
+&DEVC ID='U_for_TKE', XYZ=75,50,5, QUANTITY='U-VELOCITY', TIME_AVERAGED=F/
+&DEVC ID='V_for_TKE', XYZ=75,50,5, QUANTITY='V-VELOCITY', TIME_AVERAGED=F/
+&DEVC ID='W_for_TKE', XYZ=75,50,5, QUANTITY='W-VELOCITY', TIME_AVERAGED=F/
+
+! Device to record the modeled Subgrid Kinetic Energy at the same point.
+&DEVC ID='SGS_TKE', XYZ=75,50,5, QUANTITY='SUBGRID KINETIC ENERGY'/
+
+! -----------------------------------------------------------------------------
+! VISUALIZATION OUTPUTS
+! -----------------------------------------------------------------------------
+! Boundary file to visualize the burning rate on the ground surface in Smokeview.
+! &BNDF QUANTITY='BURNING RATE', SURF_ID='LITTER_BED' /
+! Slice file for general visualization of temperature.
+! &SLCF PBY=50, QUANTITY='TEMPERATURE'/
+
+! -----------------------------------------------------------------------------
+! SIMULATION CONTROL
+! -----------------------------------------------------------------------------
+! Devices below define a kill condition for the simulation based on heat flux thresholds.
 &DEVC ID='KILL-DEVICE-1', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 15, 0.05, IOR=3 /
 &DEVC ID='KILL-DEVICE-2', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 30, 0.05, IOR=3 /
 &DEVC ID='KILL-DEVICE-3', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 45, 0.05, IOR=3 /
 &DEVC ID='KILL-DEVICE-4', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 60, 0.05, IOR=3 /
 &DEVC ID='KILL-DEVICE-5', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 75, 0.05, IOR=3 /
 
-! Lines below define the kill condition when mass flux activates the kill device conditions
+! Control functions that activate the kill condition.
 &CTRL ID='CTRL-KILL-1', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-1' /
 &CTRL ID='CTRL-KILL-2', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-2' /
 &CTRL ID='CTRL-KILL-3', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-3' /
 &CTRL ID='CTRL-KILL-4', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-4' /
 &CTRL ID='CTRL-KILL-5', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-5' /
 
-! Flame height
-! CATF OTHER_FILES='../../Auxiliary_Files/fia_devc_lines.fds'/
-! CATF OTHER_FILES='../../Auxiliary_Files/sensor_array_devc_lines.fds'/
-
-! DUMP DT_PART=10,CFL_FILE=T,DT_SLCF=1,DT_DEVC=0.5,DT_SMOKE3D=1,CFL_FILE=T/
+! Specifies the output frequency for different file types.
+&DUMP DT_DEVC=0.5 /
 
 &TAIL /
