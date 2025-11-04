@@ -4,7 +4,7 @@
 !! DOMAIN
 &MESH IJK=40,40,50, XB=0,10,0,10,0,40, MULT_ID='mm',TRNZ_ID='TRNZ'/
 &MULT ID='mm', DX=10,DY=10,I_UPPER=9,J_UPPER=9/
-&CATF OTHER_FILES='../Auxiliary_Files/TRN.fds'/
+&CATF OTHER_FILES='../../Auxiliary_Files/TRN.fds'/
 
 &VENT DB='XMIN', SURF_ID='OPEN'/
 &VENT DB='XMAX', SURF_ID='OPEN'/
@@ -62,7 +62,7 @@
 &PART ID='douglas-fir', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='douglas-fir'
       QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='FOREST GREEN',
       EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
-&INIT PART_ID='douglas-fir', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../Auxiliary_Files/${bdf_file}' /
+&INIT PART_ID='douglas-fir', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../../Auxiliary_Files/${bdf_file}' /
 
 
 ! Ponderosa pine
@@ -77,9 +77,9 @@
 !PART ID='ponderosa-pine', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='ponderosa-pine'
       QUANTITIES='PARTICLE TEMPERATURE','PARTICLE BULK DENSITY', STATIC=.TRUE., COLOR='BURNT ORANGE ',
       EMBER_PARTICLE = T, EMBER_DENSITY_THRESHOLD=70, EMBER_VELOCITY_THRESHOLD=0., TRACK_EMBERS=F /
-!INIT PART_ID='ponderosa-pine', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../Auxiliary_Files/fia_part_3588.bdf' /
+!INIT PART_ID='ponderosa-pine', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../../Auxiliary_Files/fia_part_3588.bdf' /
 
-&CATF OTHER_FILES='../Auxiliary_Files/generic_vegetation_1R_MATL.fds'/
+&CATF OTHER_FILES='../../Auxiliary_Files/generic_vegetation_1R_MATL.fds'/
 
 &INIT ID='surface-litter_1', PART_ID='surface-litter', N_PARTICLES=1, XYZ=12,38,0.05/
 
@@ -112,8 +112,8 @@
 &CTRL ID='CTRL-KILL-5', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-5' /
 
 ! Flame height
-! CATF OTHER_FILES='../Auxiliary_Files/fia_devc_lines.fds'/
-! CATF OTHER_FILES='../Auxiliary_Files/sensor_array_devc_lines.fds'/
+! CATF OTHER_FILES='../../Auxiliary_Files/fia_devc_lines.fds'/
+! CATF OTHER_FILES='../../Auxiliary_Files/sensor_array_devc_lines.fds'/
 
 ! DUMP DT_PART=10,CFL_FILE=T,DT_SLCF=1,DT_DEVC=0.5,DT_SMOKE3D=1,CFL_FILE=T/
 
