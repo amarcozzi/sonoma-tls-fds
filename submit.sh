@@ -18,7 +18,6 @@ conda activate fds
 export FI_PROVIDER=verbs
 export I_MPI_FABRICS=shm:ofi
 
-
 # Read the sorted list of simulation IDs from a file into a bash array
 mapfile -t SIM_IDS < <(sort identifiers.txt)
 
@@ -27,14 +26,12 @@ CURRENT_SIM_ID=${SIM_IDS[$SLURM_ARRAY_TASK_ID]}
 
 # Define the simulation directory for this specific task
 SIM_DIR="simulations/${CURRENT_SIM_ID}"
+cd ${SIM_DIR}
 
 # Define a unique log file for this task inside its simulation directory
-LOG_FILE="${SIM_DIR}/fds_run.log"
+LOG_FILE="fds_run.log"
 
 echo "Starting Slurm Task ID: ${SLURM_ARRAY_TASK_ID}, Simulation: ${CURRENT_SIM_ID}" > ${LOG_FILE}
-
-# Navigate to the correct simulation directory
-cd ${SIM_DIR}
 
 # Launch the single, parallel FDS simulation.
 # srun automatically uses the resources allocated to this specific array task (--nodes=4, --ntasks=100)
