@@ -74,7 +74,7 @@
 ! RATE OF SPREAD (ROS)
 ! An array of devices to record the fire arrival time along the domain centerline.
 ! -----------------------------------------------------------------------------
-&DEVC ID='ROS_line', PROP_ID='ROS_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
+&DEVC ID='ROS_line', PROP_ID='ROS_sensor', XBP=15, 90, 50,50, 0,0, IOR=3, POINTS=50 /
 &PROP ID='ROS_sensor', QUANTITY='FIRE ARRIVAL TIME' /
 
 ! -----------------------------------------------------------------------------
@@ -82,7 +82,7 @@
 ! A set of control functions and devices to calculate flame dimensions at x=75 m.
 ! -----------------------------------------------------------------------------
 ! Step 1: Get the vertical HRR profile by integrating HRRPUV over horizontal slices.
-&DEVC ID='HRR_x75', Z_ID='z', XBP=70,80, 45,55, 0.1,20, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', STATISTICS_START=10., POINTS=100/
+&DEVC ID='HRR_x75', Z_ID='z', XB=70,80, 45,55, 0.1,20, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', STATISTICS_START=10., POINTS=100/
 
 ! Step 2: Calculate Flame Height (H) as the 97th percentile of the HRR profile.
 &CTRL ID='H_x75', FUNCTION_TYPE='PERCENTILE', INPUT_ID='HRR_x75', PERCENTILE=0.97 /
@@ -120,14 +120,16 @@
 ! HEAT FLUX TO FUEL BED
 ! A line of devices measuring radiative and convective heat flux to the ground.
 ! -----------------------------------------------------------------------------
-&DEVC ID='rad_flux_line', QUANTITY='RADIATIVE HEAT FLUX', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
-&DEVC ID='conv_flux_line', QUANTITY='CONVECTIVE HEAT FLUX', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
+&DEVC ID='rad_flux_line', PROP_ID='rad_sensor', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
+&DEVC ID='conv_flux_line', PROP_ID='conv_sensor', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
+&PROP ID='rad_sensor', QUANTITY='RADIATIVE HEAT FLUX' /
+&PROP ID='conv_sensor', QUANTITY='CONVECTIVE HEAT FLUX' /
 
 ! -----------------------------------------------------------------------------
 ! FUEL CONSUMPTION
 ! -----------------------------------------------------------------------------
 ! Measures the total mass of the surface fuel layer over the entire domain.
-&DEVC ID='litter dry mass', XB=0., 200., 0., 200., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+&DEVC ID='litter dry mass', XB=0., 90., 0., 90., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
 ! Measures the total mass of all canopy particles in the simulation.
 &DEVC ID='canopy_mass', DB='WHOLE DOMAIN', QUANTITY='PARTICLE MASS', PART_ID='douglas-fir', SPATIAL_STATISTIC='SUM' /
 
