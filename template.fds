@@ -81,8 +81,9 @@
 ! FLAME HEIGHT, TILT, and LENGTH
 ! A set of control functions and devices to calculate flame dimensions at x=75 m.
 ! -----------------------------------------------------------------------------
-! Step 1: Get the vertical HRR profile by integrating HRRPUV over horizontal slices.
-&DEVC ID='HRR_x75', Z_ID='z', XB=70,80, 45,55, 0.1,20, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', STATISTICS_START=10., POINTS=100/
+! Step 1: Create a vertical line of 100 devices. Each device calculates the VOLUME INTEGRAL of HRRPUV
+! over a horizontal slice that is 10m x 10m wide (DX=5, DY=5) and 0.1m thick (DZ=0.05).
+&DEVC ID='HRR_x75', Z_ID='z', XBP=75,75, 50,50, 0.1,20, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', DX=5., DY=5., DZ=0.05, STATISTICS_START=10., POINTS=100/
 
 ! Step 2: Calculate Flame Height (H) as the 97th percentile of the HRR profile.
 &CTRL ID='H_x75', FUNCTION_TYPE='PERCENTILE', INPUT_ID='HRR_x75', PERCENTILE=0.97 /
