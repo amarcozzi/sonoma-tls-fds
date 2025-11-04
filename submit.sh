@@ -9,7 +9,10 @@
 #SBATCH --partition=atlas
 #SBATCH --array=0-25%1
 
-module load intel-oneapi-compilers intel-oneapi-mpi
+module load intel-oneapi-compilers intel-oneapi-mkl
+
+source /project/umontana_fire_modeling/anthony.marcozzi/miniforge3/etc/profile.d/conda.sh
+conda activate fds
 
 export FI_PROVIDER=verbs
 export I_MPI_FABRICS=shm:ofi
