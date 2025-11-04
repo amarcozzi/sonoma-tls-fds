@@ -29,7 +29,7 @@ CURRENT_SIM_ID=${SIM_IDS[$SLURM_ARRAY_TASK_ID]}
 SIM_DIR="simulations/${CURRENT_SIM_ID}"
 
 # Define a unique log file for this task inside its simulation directory
-LOG_FILE="${SIM_DIR}/fds_run_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log"
+LOG_FILE="${SIM_DIR}/fds_run.log"
 
 echo "Starting Slurm Task ID: ${SLURM_ARRAY_TASK_ID}, Simulation: ${CURRENT_SIM_ID}" > ${LOG_FILE}
 
