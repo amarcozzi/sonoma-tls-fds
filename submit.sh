@@ -1,12 +1,13 @@
 #!/bin/bash
 
 #SBATCH -J FDS_Sonoma_Array
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=25        # 4 nodes * 25 tasks/node = 100 MPI processes
+#SBATCH --nodes=1
+#SBATCH -n 1
+#SBATCH --cpus-per-task=90
 #SBATCH --mem-per-cpu=2G
 #SBATCH -t 5-0
 #SBATCH -A umontana_fire_modeling
-#SBATCH --array=0-25%4
+#SBATCH --array=0-25%2
 
 # --- Environment Setup ---
 module load intel
@@ -31,6 +32,7 @@ echo "Starting Slurm Task ID: ${SLURM_ARRAY_TASK_ID}, Simulation: ${CURRENT_SIM_
 
 # Launch the single, parallel FDS simulation.
 # srun automatically uses the resources allocated to this specific array task (--nodes=4, --ntasks=100)
-srun /90daydata/umontana_fire_modeling/anthony.marcozzi/fds/Build/impi_intel_linux/fds_impi_intel_linux input.fds >> ${LOG_FILE} 2>&1
+# srun /90daydata/umontana_fire_modeling/anthony.marcozzi/fds/Build/impi_intel_linux/fds_impi_intel_linux input.fds >> ${LOG_FILE} 2>&1
+mpirun -n 90 /90daydata/umontana_fire_modeling/anthony.marcozzi/fds/Build/impi_intel_linux/fds_impi_intel_linux input.fds >> ${LOG_FILE} 2>&1
 
 echo "Job ${CURRENT_SIM_ID} finished." >> ${LOG_FILE}
