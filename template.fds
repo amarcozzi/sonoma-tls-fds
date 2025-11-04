@@ -35,7 +35,6 @@
       MASS_PER_VOLUME(1)      = 11.95
       MOISTURE_FRACTION(1)    = 0.15
       SURFACE_VOLUME_RATIO(1) = 8000.
-      DRAG_COEFFICIENT(1)      = 2.8
       MATL_ID(2,1)            = 'Soil'
       THICKNESS(2)            = 0.1
       COLOR                   = 'GOLD' /
