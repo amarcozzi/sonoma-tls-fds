@@ -75,7 +75,7 @@
 ! An array of devices to record the fire arrival time along the domain centerline.
 ! -----------------------------------------------------------------------------
 &DEVC ID='ROS_line', PROP_ID='ROS_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
-&PROP ID='ROS_sensor', QUANTITY='FIRE ARRIVAL TIME', UNITS='s' /
+&PROP ID='ROS_sensor', QUANTITY='FIRE ARRIVAL TIME' /
 
 ! -----------------------------------------------------------------------------
 ! FLAME HEIGHT, TILT, and LENGTH
