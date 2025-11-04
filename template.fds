@@ -121,17 +121,13 @@
 ! HEAT FLUX TO FUEL BED
 ! A line of devices measuring radiative and convective heat flux to the ground.
 ! -----------------------------------------------------------------------------
-&DEVC ID='rad_flux_line', PROP_ID='rad_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
-&DEVC ID='conv_flux_line', PROP_ID='conv_sensor', XBP=15,100, 50,50, 0,0, IOR=3, POINTS=50 /
-&PROP ID='rad_sensor', QUANTITY='RADIATIVE HEAT FLUX' /
-&PROP ID='conv_sensor', QUANTITY='CONVECTIVE HEAT FLUX' /
+&DEVC ID='rad_flux_line', QUANTITY='RADIATIVE HEAT FLUX', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
+&DEVC ID='conv_flux_line', QUANTITY='CONVECTIVE HEAT FLUX', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
 
 ! -----------------------------------------------------------------------------
 ! FUEL CONSUMPTION
 ! -----------------------------------------------------------------------------
-! Measures the total mass of the surface fuel layer over the entire domain.
-&DEVC ID='litter dry mass', XB=0., 200., 0., 200., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
-! Measures the total mass of all canopy particles in the simulation.
+&DEVC ID='litter dry mass', XB=0., 90., 0., 90., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
 &DEVC ID='canopy_mass', QUANTITY='PARTICLE MASS', PART_ID='douglas-fir', SPATIAL_STATISTIC='SUM' /
 
 ! -----------------------------------------------------------------------------
@@ -166,12 +162,11 @@
 &DEVC ID='KILL-DEVICE-4', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 60, 0.05, IOR=3 /
 &DEVC ID='KILL-DEVICE-5', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 75, 0.05, IOR=3 /
 
-! Control functions that activate the kill condition.
-&CTRL ID='CTRL-KILL-1', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-1' /
-&CTRL ID='CTRL-KILL-2', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-2' /
-&CTRL ID='CTRL-KILL-3', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-3' /
-&CTRL ID='CTRL-KILL-4', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-4' /
-&CTRL ID='CTRL-KILL-5', FUNCTION_TYPE='KILL', INPUT_ID='KILL-DEVICE-5' /
+! Control function that activates if ANY of the kill devices are triggered.
+&CTRL ID='ANY_KILL_TRIGGER', FUNCTION_TYPE='ANY', INPUT_ID='KILL-DEVICE-1','KILL-DEVICE-2','KILL-DEVICE-3','KILL-DEVICE-4','KILL-DEVICE-5' /
+
+! Master control function that terminates the simulation.
+&CTRL ID='MASTER_KILL', FUNCTION_TYPE='KILL', INPUT_ID='ANY_KILL_TRIGGER' /
 
 ! Specifies the output frequency for different file types.
 &DUMP DT_DEVC=0.5 /
