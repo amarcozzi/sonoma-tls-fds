@@ -7,7 +7,7 @@
 #SBATCH --mem-per-cpu=2G
 #SBATCH -t 5-0
 #SBATCH -A umontana_fire_modeling
-#SBATCH --array=0-25%2
+#SBATCH --array=0-3%2
 
 # --- Environment Setup ---
 module load intel
