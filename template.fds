@@ -126,8 +126,10 @@
 ! -----------------------------------------------------------------------------
 ! FUEL CONSUMPTION
 ! -----------------------------------------------------------------------------
-&DEVC ID='litter dry mass', XB=0., 90., 0., 90., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
-&DEVC ID='canopy_mass', QUANTITY='PARTICLE MASS', PART_ID='douglas-fir', SPATIAL_STATISTIC='SUM' /
+! Measures the total mass of the surface fuel layer over the entire domain.
+&DEVC ID='litter dry mass', XB=0., 200., 0., 200., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
+! Measures the total mass of all canopy particles in the simulation.
+&DEVC ID='canopy_mass', DB='WHOLE DOMAIN', QUANTITY='PARTICLE MASS', PART_ID='douglas-fir', SPATIAL_STATISTIC='SUM' /
 
 ! -----------------------------------------------------------------------------
 ! TURBULENT KINETIC ENERGY (TKE)
