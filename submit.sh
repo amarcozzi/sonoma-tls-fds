@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -J FDS_Sonoma
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=100
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=50
 #SBATCH --mem-per-cpu=2G
 #SBATCH -t 5-0
 #SBATCH -A umontana_fire_modeling
