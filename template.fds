@@ -68,97 +68,16 @@
 ! Include the material properties for GENERIC VEGETATION from an external file
 &CATF OTHER_FILES='../../Auxiliary_Files/generic_vegetation_1R_MATL.fds'/
 
-!! OUTPUTS
+!! Output Variables
+&SLCF PBY=50, QUANTITY='HRRPUV', CELL_CENTERED=T /
+&SLCF PBY=50, QUANTITY='TEMPERATURE', CELL_CENTERED=T /
+&SLCF PBY=50, QUANTITY='U-VELOCITY', CELL_CENTERED=T /
+&SLCF PBY=50, QUANTITY='V-VELOCITY', CELL_CENTERED=T /
+&SLCF PBY=50, QUANTITY='W-VELOCITY', CELL_CENTERED=T /
+&SLCF PBY=50, QUANTITY='VELOCITY', VECTOR=T, CELL_CENTERED=T /
+&SLCF PBY=50, QUANTITY='SUBGRID KINETIC ENERGY', CELL_CENTERED=T /
 
-! -----------------------------------------------------------------------------
-! RATE OF SPREAD (ROS)
-! An array of devices to record the fire arrival time along the domain centerline.
-! -----------------------------------------------------------------------------
-&DEVC ID='ROS_line', PROP_ID='ROS_sensor', XBP=15, 90, 50,50, 0,0, IOR=3, POINTS=50 /
-&PROP ID='ROS_sensor', QUANTITY='FIRE ARRIVAL TIME' /
-
-! -----------------------------------------------------------------------------
-! FLAME HEIGHT, TILT, and LENGTH
-! A set of control functions and devices to calculate flame dimensions at x=75 m.
-! -----------------------------------------------------------------------------
-! Step 1: Create a vertical line of 100 devices. Each device calculates the VOLUME INTEGRAL of HRRPUV
-! over a horizontal slice that is 10m x 10m wide (DX=5, DY=5) and 0.1m thick (DZ=0.05).
-&DEVC ID='HRR_x75', Z_ID='z', XBP=75,75, 50,50, 0.1,20, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', DX=5., DY=5., DZ=0.05, STATISTICS_START=10., POINTS=100/
-
-! Step 2: Calculate Flame Height (H) as the 97th percentile of the HRR profile.
-&CTRL ID='H_x75', FUNCTION_TYPE='PERCENTILE', INPUT_ID='HRR_x75', PERCENTILE=0.97 /
-
-! Step 3: Find the x,y location of the maximum temperature near the flame tip to determine tilt.
-&DEVC ID='x_max_x75', XB=70,80, 45,55, 9.0,9.2, QUANTITY='TEMPERATURE', SPATIAL_STATISTIC='MAXLOC X' /
-&DEVC ID='y_max_x75', XB=70,80, 45,55, 9.0,9.2, QUANTITY='TEMPERATURE', SPATIAL_STATISTIC='MAXLOC Y' /
-
-! Step 4: Use a series of math functions to calculate tilt angle and flame length (L = H / cos(tilt)).
-&CTRL ID='x2_x75', FUNCTION_TYPE='POWER', INPUT_ID='x_max_x75','CONSTANT', CONSTANT=2 /
-&CTRL ID='y2_x75', FUNCTION_TYPE='POWER', INPUT_ID='y_max_x75','CONSTANT', CONSTANT=2 /
-&CTRL ID='r2_x75', FUNCTION_TYPE='SUM', INPUT_ID='x2_x75','y2_x75' /
-&CTRL ID='r_x75', FUNCTION_TYPE='POWER', INPUT_ID='r2_x75','CONSTANT', CONSTANT=0.5 /
-&CTRL ID='r/9_x75', FUNCTION_TYPE='DIVIDE', INPUT_ID='r_x75','CONSTANT', CONSTANT=9 /
-&CTRL ID='tilt_rad_x75', FUNCTION_TYPE='ATAN', INPUT_ID='r/9_x75' /
-&CTRL ID='tilt_deg_x75', FUNCTION_TYPE='MULTIPLY', INPUT_ID='tilt_rad_x75','CONSTANT', CONSTANT=57.296 /
-&CTRL ID='cos_theta_x75', FUNCTION_TYPE='COS', INPUT_ID='tilt_rad_x75' /
-&CTRL ID='L_x75', FUNCTION_TYPE='DIVIDE', INPUT_ID='H_x75','cos_theta_x75' /
-
-! Step 5: Output the final calculated values for height, tilt, and length.
-&DEVC ID='Flame Height (x=75)', CTRL_ID='H_x75', QUANTITY='CONTROL VALUE', UNITS='m' /
-&DEVC ID='Flame Tilt (x=75)', CTRL_ID='tilt_deg_x75', QUANTITY='CONTROL VALUE', UNITS='deg' /
-&DEVC ID='Flame Length (x=75)', CTRL_ID='L_x75', QUANTITY='CONTROL VALUE', UNITS='m' /
-
-! -----------------------------------------------------------------------------
-! VERTICAL TEMPERATURE & WIND PROFILES
-! A vertical array of devices at x=75m to measure temperature and velocity components.
-! -----------------------------------------------------------------------------
-&DEVC ID='Temp_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='TEMPERATURE', POINTS=40, TIME_HISTORY=T/
-&DEVC ID='U_Vel_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='U-VELOCITY', POINTS=40, TIME_HISTORY=T/
-&DEVC ID='V_Vel_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='V-VELOCITY', POINTS=40, TIME_HISTORY=T/
-&DEVC ID='W_Vel_Profile_x75', XBP=75,75, 50,50, 0,40, QUANTITY='W-VELOCITY', POINTS=40, TIME_HISTORY=T/
-
-! -----------------------------------------------------------------------------
-! HEAT FLUX TO FUEL BED
-! A line of devices measuring radiative and convective heat flux to the ground.
-! -----------------------------------------------------------------------------
-&DEVC ID='rad_flux_line', PROP_ID='rad_sensor', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
-&DEVC ID='conv_flux_line', PROP_ID='conv_sensor', XBP=15,90, 50,50, 0,0, IOR=3, POINTS=50 /
-&PROP ID='rad_sensor', QUANTITY='RADIATIVE HEAT FLUX' /
-&PROP ID='conv_sensor', QUANTITY='CONVECTIVE HEAT FLUX' /
-
-! -----------------------------------------------------------------------------
-! FUEL CONSUMPTION
-! -----------------------------------------------------------------------------
-! Measures the total mass of the surface fuel layer over the entire domain.
-&DEVC ID='litter dry mass', XB=0., 90., 0., 90., 0.00, 0.00, IOR=3, QUANTITY='SURFACE DENSITY', MATL_ID='GENERIC VEGETATION', SPATIAL_STATISTIC='SURFACE INTEGRAL'/
-! Measures the total mass of all canopy particles in the simulation.
-&DEVC ID='canopy_mass', DB='WHOLE DOMAIN', QUANTITY='PARTICLE MASS', PART_ID='douglas-fir', SPATIAL_STATISTIC='SUM' /
-
-! -----------------------------------------------------------------------------
-! TURBULENT KINETIC ENERGY (TKE)
-! TKE is composed of a resolved part and a subgrid-scale (SGS) part.
-! The resolved part must be calculated in post-processing from the velocity time histories.
-! The SGS part is output directly.
-! -----------------------------------------------------------------------------
-! Devices to record instantaneous velocity at a point (x,y,z) = (75,50,5) for post-processing.
-&DEVC ID='U_for_TKE', XYZ=75,50,5, QUANTITY='U-VELOCITY', TIME_AVERAGED=F/
-&DEVC ID='V_for_TKE', XYZ=75,50,5, QUANTITY='V-VELOCITY', TIME_AVERAGED=F/
-&DEVC ID='W_for_TKE', XYZ=75,50,5, QUANTITY='W-VELOCITY', TIME_AVERAGED=F/
-
-! Device to record the modeled Subgrid Kinetic Energy at the same point.
-&DEVC ID='SGS_TKE', XYZ=75,50,5, QUANTITY='SUBGRID KINETIC ENERGY'/
-
-! -----------------------------------------------------------------------------
-! VISUALIZATION OUTPUTS
-! -----------------------------------------------------------------------------
-! Boundary file to visualize the burning rate on the ground surface in Smokeview.
-! &BNDF QUANTITY='BURNING RATE', SURF_ID='LITTER_BED' /
-! Slice file for general visualization of temperature.
-! &SLCF PBY=50, QUANTITY='TEMPERATURE'/
-
-! -----------------------------------------------------------------------------
-! SIMULATION CONTROL
-! -----------------------------------------------------------------------------
+!! Simulation Control
 ! Devices below define a kill condition for the simulation based on heat flux thresholds.
 &DEVC ID='KILL-DEVICE-1', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 15, 0.05, IOR=3 /
 &DEVC ID='KILL-DEVICE-2', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=90, 30, 0.05, IOR=3 /
@@ -171,8 +90,5 @@
 
 ! Master control function that terminates the simulation.
 &CTRL ID='MASTER_KILL', FUNCTION_TYPE='KILL', INPUT_ID='ANY_KILL_TRIGGER' /
-
-! Specifies the output frequency for different file types.
-&DUMP DT_DEVC=0.5 /
 
 &TAIL /
