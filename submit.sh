@@ -7,7 +7,7 @@
 #SBATCH --mem-per-cpu=2G
 #SBATCH -t 5-0
 #SBATCH -A umontana_fire_modeling
-#SBATCH --array=0-3%4
+#SBATCH --array=0-1%2
 #SBATCH -o logs/%a.log
 #SBATCH -e logs/%a.log
 
