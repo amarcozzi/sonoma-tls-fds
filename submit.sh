@@ -29,6 +29,6 @@ echo "Starting Slurm Task ID: ${SLURM_ARRAY_TASK_ID}, Simulation: ${CURRENT_SIM_
 cd ${SIM_DIR}
 
 # Launch the FDS simulation.
-mpirun -n 81 /90daydata/umontana_fire_modeling/anthony.marcozzi/fds/Build/impi_intel_linux/fds_impi_intel_linux input.fds
+mpirun -n 81 /project/umontana_fire_modeling/anthony.marcozzi/fds/Build/impi_intel_linux/fds_impi_intel_linux input.fds
 
 echo "Job ${CURRENT_SIM_ID} finished."
