@@ -1,5 +1,5 @@
 &HEAD CHID='out_${identifier}'/
-&TIME T_END=600/
+&TIME T_END=1000/
 
 !! DOMAIN AND MESH
 &MESH IJK=40,40,50, XB=0,10,0,10,0,40, MULT_ID='mm',TRNZ_ID='TRNZ'/
