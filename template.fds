@@ -129,6 +129,11 @@
 &SLCF PBZ=10,  QUANTITY='U-VELOCITY', CELL_CENTERED=T /
 &SLCF PBZ=20,  QUANTITY='U-VELOCITY', CELL_CENTERED=T /
 
+! Ground-plane boundary outputs: fire-front kinematics and heat flux to surface fuels.
+! FIRE ARRIVAL TIME is cumulative (one end-of-sim snapshot captures the full spread map).
+&BNDF QUANTITY='FIRE ARRIVAL TIME' /
+&BNDF QUANTITY='TOTAL HEAT FLUX' /
+
 !! Simulation Control
 ! Devices below define a kill condition for the simulation based on heat flux thresholds.
 &DEVC ID='KILL-DEVICE-1', QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, XYZ=40, -30, 0.05, IOR=3 /
