@@ -10,12 +10,10 @@
 &VENT DB='XMIN', SURF_ID='OPEN'/
 &VENT DB='XMAX', SURF_ID='OPEN'/
 &VENT DB='ZMAX', SURF_ID='OPEN'/
-&VENT DB='YMIN', SURF_ID='OPEN'/
-&VENT DB='YMAX', SURF_ID='OPEN'/
 
-! ! Cross-stream (Y) periodic: treats the line fire as infinite in Y.
-! &VENT PBY=-45, SURF_ID='PERIODIC FLOW ONLY'/
-! &VENT PBY= 45, SURF_ID='PERIODIC FLOW ONLY'/
+! Cross-stream (Y) periodic: treats the line fire as infinite in Y.
+&VENT PBY=-45, SURF_ID='PERIODIC FLOW ONLY'/
+&VENT PBY= 45, SURF_ID='PERIODIC FLOW ONLY'/
 
 ! Original OPEN Y boundaries
 ! &VENT DB='YMIN', SURF_ID='OPEN'/
@@ -30,7 +28,7 @@
 &RAMP ID='fireramp', T=31., F=1. /
 &RAMP ID='fireramp', T=41., F=1. /
 &RAMP ID='fireramp', T=42., F=0. /
-&VENT XB=-40,-39,-35,35,0,0, SURF_ID='IGN FIRE'/
+&VENT XB=-41,-40,-45,45,0,0, SURF_ID='IGN FIRE'/
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
