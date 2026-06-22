@@ -23,7 +23,7 @@
 &WIND SPEED=3.75, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
 
 !! IGNITION
-&SURF ID='IGN FIRE', HRRPUA=500., COLOR='RED', RAMP_Q='fireramp' /
+&SURF ID='IGN FIRE', HRRPUA=100., COLOR='RED', RAMP_Q='fireramp' /
 &RAMP ID='fireramp', T= 30., F=0. /
 &RAMP ID='fireramp', T=31., F=1. /
 &RAMP ID='fireramp', T=41., F=1. /
