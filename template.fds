@@ -56,7 +56,7 @@
 &SURF ID                        = 'douglas-fir'
       MATL_ID                   = 'GENERIC VEGETATION'
       MATL_MASS_FRACTION        = 1.0
-      MOISTURE_FRACTION         = 1.0
+      MOISTURE_FRACTION         = 1.25
       BLOWING                   = T
       SURFACE_VOLUME_RATIO      = 3422.
       LENGTH                    = 0.05
