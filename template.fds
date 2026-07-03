@@ -27,7 +27,7 @@
 &RAMP ID='fireramp', T=30., F=0. /
 &RAMP ID='fireramp', T=35., F=1. /
 &RAMP ID='fireramp', T=40., F=0. /
-&VENT XB=-44.5,-44,-45,45,0,0, SURF_ID='IGN FIRE'/
+&VENT XB=-41,-40,-45,45,0,0, SURF_ID='IGN FIRE'/
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
