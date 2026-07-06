@@ -11,23 +11,35 @@
 &VENT DB='XMAX', SURF_ID='OPEN'/
 &VENT DB='ZMAX', SURF_ID='OPEN'/
 
-! Cross-stream (Y) periodic: treats the line fire as infinite in Y.
-&VENT PBY=-45, SURF_ID='PERIODIC FLOW ONLY'/
-&VENT PBY= 45, SURF_ID='PERIODIC FLOW ONLY'/
+! Cross-stream (Y) OPEN: finite burn (Path B) — allows lateral entrainment and
+! flank development. Replaces the periodic-Y infinite-line idealization to be
+! consistent with the progressive SPREAD_RATE ignition below.
+&VENT DB='YMIN', SURF_ID='OPEN'/
+&VENT DB='YMAX', SURF_ID='OPEN'/
 
-! Original OPEN Y boundaries
-! &VENT DB='YMIN', SURF_ID='OPEN'/
-! &VENT DB='YMAX', SURF_ID='OPEN'/
+! Previous periodic-Y (infinite line fire) — disabled for the finite-burn setup:
+! &VENT PBY=-45, SURF_ID='PERIODIC FLOW ONLY'/
+! &VENT PBY= 45, SURF_ID='PERIODIC FLOW ONLY'/
 
 !! WIND FIELD
 &WIND SPEED=3.75, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
 
-!! IGNITION
-&SURF ID='IGN FIRE', HRRPUA=150., COLOR='RED', RAMP_Q='fireramp' /
+!! IGNITION — progressive line ignition (Camp Swift style; FDS UG Sec. 9.2.1)
+! The fire starts at XYZ (center of the line) and spreads radially outward along
+! Y at SPREAD_RATE, so only a short segment burns at any instant (small plume,
+! no full-width "wall of fire"), while HRRPUA x dwell (~5 MJ/m^2) delivers enough
+! local energy to actually ignite the litter bed. RAMP_Q is applied RELATIVE to
+! each cell's arrival time; the leading 30 s hold gives the wind field time to
+! spin up before the origin cell ignites (T_BEGIN=0, so no ramp offset caveat).
+&SURF ID='IGN FIRE', HRRPUA=1000., COLOR='RED', RAMP_Q='fireramp' /
 &RAMP ID='fireramp', T=30., F=0. /
-&RAMP ID='fireramp', T=35., F=1. /
-&RAMP ID='fireramp', T=40., F=0. /
-&VENT XB=-41,-40,-45,45,0,0, SURF_ID='IGN FIRE'/
+&RAMP ID='fireramp', T=31., F=1. /
+&RAMP ID='fireramp', T=36., F=1. /
+&RAMP ID='fireramp', T=37., F=0. /
+! Strip narrowed to one cell (0.25 m) in X so the moving burn segment stays small
+! (~4 MW instantaneous vs the previous 13.5 MW full-width flash). XYZ = line
+! center; SPREAD_RATE in m/s (Camp Swift used 1.314). Tune SPREAD_RATE/HRRPUA/dwell.
+&VENT XB=-41,-40.75,-45,45,0,0, SURF_ID='IGN FIRE', XYZ=-40.875,0.,0., SPREAD_RATE=1.314 /
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
