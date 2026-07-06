@@ -38,7 +38,7 @@
       MATL_ID(1,1)            = 'GENERIC VEGETATION'
       THICKNESS(1)            = 0.061
       MASS_PER_VOLUME(1)      = 11.95
-      MOISTURE_FRACTION(1)    = 0.15
+      MOISTURE_CONTENT(1)     = 0.15
       SURFACE_VOLUME_RATIO(1) = 8000.
       MATL_ID(2,1)            = 'Soil'
       THICKNESS(2)            = 0.1
@@ -56,7 +56,7 @@
 &SURF ID                        = 'douglas-fir'
       MATL_ID                   = 'GENERIC VEGETATION'
       MATL_MASS_FRACTION        = 1.0
-      MOISTURE_FRACTION         = 1.25
+      MOISTURE_CONTENT          = 1.25
       BLOWING                   = T
       SURFACE_VOLUME_RATIO      = 3422.
       LENGTH                    = 0.05
