@@ -39,7 +39,12 @@
 ! Strip narrowed to one cell (0.25 m) in X so the moving burn segment stays small
 ! (~4 MW instantaneous vs the previous 13.5 MW full-width flash). XYZ = line
 ! center; SPREAD_RATE in m/s (Camp Swift used 1.314). Tune SPREAD_RATE/HRRPUA/dwell.
-&VENT XB=-41,-40.75,-45,45,0,0, SURF_ID='IGN FIRE', XYZ=-40.875,0.,0., SPREAD_RATE=1.314 /
+! Y-extent is -30..30, NOT the full -45..45 domain: the previous full-width line
+! ended flush on the YMIN/YMAX OPEN vents, so its ends ignited combustion directly
+! on the open boundary at ~t=65 s and blew up the pressure solve (ERROR 374, all
+! runs, div ~-1e5 at J=1). The 15 m buffer keeps fire off the open boundaries and
+! aligns the line ends with the outermost kill devices at Y=+/-30.
+&VENT XB=-41,-40.75,-30,30,0,0, SURF_ID='IGN FIRE', XYZ=-40.875,0.,0., SPREAD_RATE=1.314 /
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
