@@ -176,6 +176,23 @@ def main(argv=None):
     print(f"  ground cell : {dz[0]:.4f} m")
     print(f"  top cell    : {dz[-1]:.4f} m")
     print(f"  growth ratio: {ratio:.4f}")
+
+    # FDS mesh-alignment guard. The multi-mesh neighbor search (SEARCH_OTHER_MESHES,
+    # func.f90) locates the abutting cell with a CELLSK inverse lookup table of
+    # 500*nz nodes over [0, ztop] -> node spacing DZETA/500 with DZETA=ztop/nz. If
+    # the smallest physical cell spans too few nodes, the FLOOR-indexed probe lands
+    # on the wrong side of a face and FDS throws a *spurious* ERROR(431) "out of
+    # alignment" (init.f90; tolerance ALIGNMENT_TOLERANCE=0.001). Empirically the
+    # smallest cell needs >=~40 nodes; >=50 is comfortable. Rule: nz >= ztop/(12.5*dz0).
+    width = 500.0 * args.dz0 / (args.ztop / args.nz)   # nominal smallest cell
+    nz_fail = int(-(-args.ztop // (12.5 * args.dz0)))   # ceil: width >= 40
+    nz_comf = int(-(-args.ztop // (10.0 * args.dz0)))   # ceil: width >= 50
+    status = "FAIL <40" if width < 40 else "fragile 40-50" if width < 50 - 1e-9 else "OK"
+    print(f"  align nodes : {width:.1f} per smallest cell ({status})")
+    if width < 50 - 1e-9:
+        print(f"  WARNING: to avoid spurious ERROR(431) at ztop={args.ztop:g} m with a "
+              f"{args.dz0:g} m min cell, use nz >= {nz_fail} "
+              f"(comfortable nz >= {nz_comf}).", file=sys.stderr)
     print()
     print("  Remember to set template.fds MESH consistently:")
     print(f"    IJK = 40,40,{args.nz}   and   XB z-range = 0,{args.ztop:g}")
