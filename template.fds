@@ -2,8 +2,8 @@
 &TIME T_END=1000/
 
 !! DOMAIN AND MESH
-! 90 x 90 x 120 m, 6(x) x 8(y) = 48 meshes (1 MPI rank/physical core; 60x45x96 = 259k cells/mesh, 0.25 m horiz).
-&MESH IJK=60,45,96, XB=-45,-30,-45,-33.75,0,120, MULT_ID='mm',TRNZ_ID='TRNZ'/
+! 90 x 90 x 120 m, 6(x) x 8(y) = 48 meshes (1 MPI rank/physical core; 60x45x64 = 173k cells/mesh, 0.25 m cubic near-ground).
+&MESH IJK=60,45,64, XB=-45,-30,-45,-33.75,0,120, MULT_ID='mm',TRNZ_ID='TRNZ'/
 &MULT ID='mm', DX=15,DY=11.25,I_UPPER=5,J_UPPER=7/
 &CATF OTHER_FILES='../../Auxiliary_Files/TRN_120m.fds'/
 
