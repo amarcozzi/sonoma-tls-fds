@@ -64,9 +64,54 @@ def build_cell_heights(nz, ztop, dz0, n_uniform):
     return dz, ratio * scale
 
 
-def trnz_lines(nz, ztop, dz0, n_uniform, trn_id):
-    """Build the TRNZ control-point lines for the stretched column."""
-    dz, ratio = build_cell_heights(nz, ztop, dz0, n_uniform)
+def build_extended_cell_heights(nz, ztop, dz0, n_uniform, base_nz, base_ztop):
+    """Preserve a base column (`base_nz` cells reaching `base_ztop`) exactly and
+    append `nz - base_nz` geometric cells that reach `ztop`, continuing the growth
+    from the base's top cell.
+
+    This keeps the near-surface / fire-zone grid byte-for-byte identical across
+    domain heights, so a ceiling (domain-independence) study varies only the cells
+    aloft -- not the resolution of the flame zone.
+    """
+    if base_nz >= nz:
+        raise ValueError("nz must exceed base_nz so there are cells to append")
+    if ztop <= base_ztop:
+        raise ValueError("ztop must exceed base_ztop")
+    base_dz, _ = build_cell_heights(base_nz, base_ztop, dz0, n_uniform)
+    n_add = nz - base_nz
+    add_height = ztop - base_ztop
+    last = base_dz[-1]
+    if add_height <= n_add * last:
+        raise ValueError(
+            f"Appended region too short: {n_add} cells starting at {last:.3f} m "
+            f"overfill {add_height} m. Reduce nz or raise ztop."
+        )
+    lo, hi = 1.0 + 1e-9, 2.0
+    for _ in range(500):
+        r = 0.5 * (lo + hi)
+        total = last * r * (r ** n_add - 1) / (r - 1)
+        if total > add_height:
+            hi = r
+        else:
+            lo = r
+    r = 0.5 * (lo + hi)
+    add_dz = [last * r ** k for k in range(1, n_add + 1)]
+    scale = add_height / sum(add_dz)  # land exactly on ztop
+    return base_dz + [d * scale for d in add_dz], r * scale
+
+
+def trnz_lines(nz, ztop, dz0, n_uniform, trn_id, base_nz=None, base_ztop=None):
+    """Build the TRNZ control-point lines for the stretched column.
+
+    If `base_nz`/`base_ztop` are given, the lower `base_nz` cells are preserved
+    exactly (matching a shorter base column) and the rest are appended aloft.
+    """
+    if base_nz is not None:
+        dz, ratio = build_extended_cell_heights(
+            nz, ztop, dz0, n_uniform, base_nz, base_ztop
+        )
+    else:
+        dz, ratio = build_cell_heights(nz, ztop, dz0, n_uniform)
     faces = [0.0]
     for d in dz:
         faces.append(faces[-1] + d)
@@ -90,9 +135,19 @@ def main(argv=None):
     p.add_argument("--n-uniform", type=int, default=4,
                    help="Number of uniform near-surface cells of height dz0.")
     p.add_argument("--id", dest="trn_id", default="TRNZ", help="TRNZ ID string.")
+    p.add_argument("--base-ztop", type=float, default=None,
+                   help="Extend mode: preserve a base column of this height (m) and "
+                        "append cells to reach --ztop. Keeps the fire-zone grid "
+                        "identical across domain heights (for a ceiling study).")
+    p.add_argument("--base-nz", type=int, default=None,
+                   help="Cell count of the preserved base column (required with --base-ztop).")
     p.add_argument("--output", type=Path, default=None,
                    help="Output path (default: Auxiliary_Files/TRN.fds relative to repo root).")
     args = p.parse_args(argv)
+
+    if (args.base_ztop is None) != (args.base_nz is None):
+        print("Error: --base-ztop and --base-nz must be given together.", file=sys.stderr)
+        return 1
 
     if args.output is None:
         repo_root = Path(__file__).resolve().parent.parent
@@ -100,7 +155,8 @@ def main(argv=None):
 
     try:
         lines, dz, ratio = trnz_lines(
-            args.nz, args.ztop, args.dz0, args.n_uniform, args.trn_id
+            args.nz, args.ztop, args.dz0, args.n_uniform, args.trn_id,
+            base_nz=args.base_nz, base_ztop=args.base_ztop,
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -111,8 +167,12 @@ def main(argv=None):
 
     print(f"Wrote {args.output}  ({len(lines)} TRNZ lines)")
     print(f"  domain      : 0 - {args.ztop:g} m")
-    print(f"  cells (nz)  : {args.nz}   ({args.n_uniform} uniform + "
-          f"{args.nz - args.n_uniform} geometric)")
+    if args.base_nz is not None:
+        print(f"  cells (nz)  : {args.nz}   ({args.base_nz} preserved from a "
+              f"{args.base_ztop:g} m base + {args.nz - args.base_nz} appended aloft)")
+    else:
+        print(f"  cells (nz)  : {args.nz}   ({args.n_uniform} uniform + "
+              f"{args.nz - args.n_uniform} geometric)")
     print(f"  ground cell : {dz[0]:.4f} m")
     print(f"  top cell    : {dz[-1]:.4f} m")
     print(f"  growth ratio: {ratio:.4f}")

@@ -2,49 +2,33 @@
 &TIME T_END=1000/
 
 !! DOMAIN AND MESH
-&MESH IJK=40,40,60, XB=-45,-35,-45,-35,0,60, MULT_ID='mm',TRNZ_ID='TRNZ'/
+! 90 x 90 x 120 m, 9x9x1 = 81 meshes
+&MESH IJK=40,40,73, XB=-45,-35,-45,-35,0,120, MULT_ID='mm',TRNZ_ID='TRNZ'/
 &MULT ID='mm', DX=10,DY=10,I_UPPER=8,J_UPPER=8/
-&CATF OTHER_FILES='../../Auxiliary_Files/TRN_60m.fds'/
+&CATF OTHER_FILES='../../Auxiliary_Files/TRN_120m.fds'/
 
 !! BOUNDARY CONDITIONS
 &VENT DB='XMIN', SURF_ID='OPEN'/
 &VENT DB='XMAX', SURF_ID='OPEN'/
 &VENT DB='ZMAX', SURF_ID='OPEN'/
 
-! Cross-stream (Y) OPEN: finite burn (Path B) — allows lateral entrainment and
-! flank development. Replaces the periodic-Y infinite-line idealization to be
-! consistent with the progressive SPREAD_RATE ignition below.
-&VENT DB='YMIN', SURF_ID='OPEN'/
-&VENT DB='YMAX', SURF_ID='OPEN'/
+! Cross-stream (Y) PERIODIC
+&VENT DB='YMIN', SURF_ID='PERIODIC'/
+&VENT DB='YMAX', SURF_ID='PERIODIC'/
 
-! Previous periodic-Y (infinite line fire) — disabled for the finite-burn setup:
-! &VENT PBY=-45, SURF_ID='PERIODIC FLOW ONLY'/
-! &VENT PBY= 45, SURF_ID='PERIODIC FLOW ONLY'/
+!VENT DB='YMIN', SURF_ID='OPEN'/
+!VENT DB='YMAX', SURF_ID='OPEN'/
 
 !! WIND FIELD
 &WIND SPEED=3.75, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
 
-!! IGNITION — progressive line ignition (Camp Swift style; FDS UG Sec. 9.2.1)
-! The fire starts at XYZ (center of the line) and spreads radially outward along
-! Y at SPREAD_RATE, so only a short segment burns at any instant (small plume,
-! no full-width "wall of fire"), while HRRPUA x dwell (~5 MJ/m^2) delivers enough
-! local energy to actually ignite the litter bed. RAMP_Q is applied RELATIVE to
-! each cell's arrival time; the leading 30 s hold gives the wind field time to
-! spin up before the origin cell ignites (T_BEGIN=0, so no ramp offset caveat).
-&SURF ID='IGN FIRE', HRRPUA=1000., COLOR='RED', RAMP_Q='fireramp' /
+!! IGNITION
+&SURF ID='IGN FIRE', HRRPUA=200., COLOR='RED', RAMP_Q='fireramp' /
 &RAMP ID='fireramp', T=30., F=0. /
 &RAMP ID='fireramp', T=31., F=1. /
 &RAMP ID='fireramp', T=36., F=1. /
 &RAMP ID='fireramp', T=37., F=0. /
-! Strip narrowed to one cell (0.25 m) in X so the moving burn segment stays small
-! (~4 MW instantaneous vs the previous 13.5 MW full-width flash). XYZ = line
-! center; SPREAD_RATE in m/s (Camp Swift used 1.314). Tune SPREAD_RATE/HRRPUA/dwell.
-! Y-extent is -30..30, NOT the full -45..45 domain: the previous full-width line
-! ended flush on the YMIN/YMAX OPEN vents, so its ends ignited combustion directly
-! on the open boundary at ~t=65 s and blew up the pressure solve (ERROR 374, all
-! runs, div ~-1e5 at J=1). The 15 m buffer keeps fire off the open boundaries and
-! aligns the line ends with the outermost kill devices at Y=+/-30.
-&VENT XB=-41,-40.75,-30,30,0,0, SURF_ID='IGN FIRE', XYZ=-40.875,0.,0., SPREAD_RATE=1.314 /
+&VENT XB=-30.25,-30,-45,45,0,0, SURF_ID='IGN FIRE' /
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
