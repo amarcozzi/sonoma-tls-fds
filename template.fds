@@ -23,12 +23,12 @@
 &WIND SPEED=3.75, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
 
 !! IGNITION
-&SURF ID='IGN FIRE', HRRPUA=200., COLOR='RED', RAMP_Q='fireramp' /
+&SURF ID='IGN FIRE', HRRPUA=1000., COLOR='RED', RAMP_Q='fireramp' /
 &RAMP ID='fireramp', T=30., F=0. /
 &RAMP ID='fireramp', T=31., F=1. /
 &RAMP ID='fireramp', T=36., F=1. /
 &RAMP ID='fireramp', T=37., F=0. /
-&VENT XB=-30.25,-30,-45,45,0,0, SURF_ID='IGN FIRE' /
+&VENT XB=-30.5,-30,-45,45,0,0, SURF_ID='IGN FIRE' /
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
