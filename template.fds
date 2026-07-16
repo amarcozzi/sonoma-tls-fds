@@ -139,14 +139,14 @@
 ! Kill-switch array (UG Sec 22.2.5, linear device array): 73 ground heat-flux devices spaced 1.25 m
 ! along y at x=+30 (20 m past the ROI, 10 m before the OPEN XMAX boundary). Fine spacing so a
 ! discontinuous/fingered fireline cannot slip between sensors. TIME_HISTORY=T makes each point an
-! individual device named 'KILL-01'..'KILL-73'.
+! individual device named 'KILL-1'..'KILL-73' (unpadded numbering, per FDS source read.f90).
 &DEVC ID='KILL', XBP=30,30,-45,45,0.05,0.05, POINTS=73, TIME_HISTORY=T,
       QUANTITY='TOTAL HEAT FLUX', SETPOINT=100, IOR=3 /
 
 ! A CTRL accepts at most 40 inputs, so the 73 devices are OR'd together in two groups.
 &CTRL ID='KILL_GROUP_A', FUNCTION_TYPE='ANY',
-      INPUT_ID='KILL-01','KILL-02','KILL-03','KILL-04','KILL-05','KILL-06','KILL-07','KILL-08',
-               'KILL-09','KILL-10','KILL-11','KILL-12','KILL-13','KILL-14','KILL-15','KILL-16',
+      INPUT_ID='KILL-1','KILL-2','KILL-3','KILL-4','KILL-5','KILL-6','KILL-7','KILL-8',
+               'KILL-9','KILL-10','KILL-11','KILL-12','KILL-13','KILL-14','KILL-15','KILL-16',
                'KILL-17','KILL-18','KILL-19','KILL-20','KILL-21','KILL-22','KILL-23','KILL-24',
                'KILL-25','KILL-26','KILL-27','KILL-28','KILL-29','KILL-30','KILL-31','KILL-32',
                'KILL-33','KILL-34','KILL-35','KILL-36','KILL-37' /
