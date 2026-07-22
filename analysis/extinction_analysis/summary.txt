@@ -1,0 +1,3 @@
+c4_p10: canopy mass in band 183.1 t (ROI 40.0 t); mean canopy load over fetch 58.41 kg/m2; mean sub-canopy U over fetch 1.83 m/s; peak drying 0.5 %; canopy consumed 0.8 %
+c4_p25: canopy mass in band 212.9 t (ROI 35.7 t); mean canopy load over fetch 86.72 kg/m2; mean sub-canopy U over fetch 1.84 m/s; peak drying 0.4 %; canopy consumed 1.8 %
+c8_p25: canopy mass in band 164.0 t (ROI 27.5 t); mean canopy load over fetch 68.07 kg/m2; mean sub-canopy U over fetch 1.61 m/s; peak drying 0.6 %; canopy consumed 1.4 %
