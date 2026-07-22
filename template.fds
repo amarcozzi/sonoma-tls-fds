@@ -1,5 +1,5 @@
 &HEAD CHID='out_${identifier}'/
-&TIME T_END=1000/
+&TIME T_END=450/
 
 !! DOMAIN AND MESH
 ! 120 x 90 x 120 m, 8(x) x 8(y) = 64 meshes (1 MPI rank/physical core; 60x45x64 = 173k cells/mesh, 0.25 m cubic near-ground).
@@ -21,7 +21,7 @@
 !VENT DB='YMAX', SURF_ID='OPEN'/
 
 !! WIND FIELD
-&WIND SPEED=3.75, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3/
+&WIND SPEED=8, DIRECTION=270, L=-500., Z_0=0.03, Z_REF=3.3 /
 
 !! IGNITION
 &SURF ID='IGN FIRE', HRRPUA=1000., COLOR='RED', RAMP_Q='fireramp' /
