@@ -1,2 +1,8 @@
 .idea/
 /FDS_User_Guide.pdf
+
+# Bulk density fields — multi-hundred-MB binaries, synced from Drive/Ceres
+*.bdf
+
+# Python
+__pycache__/
