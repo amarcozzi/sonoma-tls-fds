@@ -1,0 +1,14 @@
+[project]
+name = "sonoma-tls-fds"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    # fdsreader 1.11.x is what the postprocessing is written against: it works
+    # around two of its limitations (Slice.to_global() on a stretched TRNZ grid,
+    # one boundary patch per orientation), so do not float the minor version.
+    "fdsreader>=1.11.9,<1.12",
+    "matplotlib>=3.11",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "tqdm>=4.66",
+]

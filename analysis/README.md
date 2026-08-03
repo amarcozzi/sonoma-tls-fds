@@ -77,5 +77,7 @@ of c4_p25's particle data; it is also the workaround for two fdsreader
 1.11.9 limitations (Slice.to_global() fails on the stretched TRNZ grid;
 Boundary.data keeps only one patch per orientation).
 
-General ROS/flame-height postprocessing (arrival-time front tracking, flame
-height from HRRPUV slices) lives in `scripts/postprocess.py`.
+General ROS/flame-geometry postprocessing (arrival-time front tracking, flame
+length/height/tilt from HRRPUV slices, distributional statistics) lives in
+`scripts/postprocess.py` and now runs on Ceres via `./run_postprocess.sh` —
+see `POSTPROCESSING.md`.

@@ -6,3 +6,11 @@
 
 # Python
 __pycache__/
+.venv/
+.uv-cache/
+
+# Postprocessing pipeline products (regenerate with ./run_postprocess.sh)
+/postprocess/
+/logs_postprocess/
+/logs/
+/.identifiers_subset.*
