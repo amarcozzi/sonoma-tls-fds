@@ -200,14 +200,36 @@ def assemble_arrival_map(sim):
     return x_nodes, y_nodes, arrival
 
 
+def ignition_line_x(x_nodes, tau_lead, tol=1.5):
+    """x of the ignition strip: the upwind edge of the earliest-arriving band.
+
+    Everything upwind of this is the BACKING fire, which spreads the other way
+    and therefore arrives late at low x. Sorted by x those points come first,
+    so leaving them in front_arrival_curve's monotonic pass lets a 55 s backing
+    arrival clamp the entire forward front to 55 s (a flat tau(x), i.e. an
+    apparently infinite ROS). They must be dropped before the pass, not after.
+    """
+    if not np.isfinite(tau_lead).any():
+        return -np.inf
+    t0 = np.nanmin(tau_lead)
+    return float(x_nodes[np.isfinite(tau_lead) & (tau_lead <= t0 + tol)].min())
+
+
 def front_arrival_curve(x_nodes, y_nodes, arrival, y_band, stat="median",
-                        t_min=0.0):
+                        t_min=0.0, x_ignition=None):
     """Reduce the 2-D arrival map to tau(x), the front arrival time at each x.
 
     stat='median': time at which half the y-band at x has ignited (robust,
-    represents the mean fireline). stat='min': leading edge (first finger).
-    Returns (x, tau, tau_lead, tau_trail) with NaN where the front never
-    arrived; tau is forced monotonic in x (spread is +x).
+    represents the mean fireline, and immune to the scattered spot-fire nodes
+    that make the leading edge non-monotonic). stat='min': leading edge.
+
+    Only x >= the ignition line is kept (see ignition_line_x); over that range
+    tau is forced monotonic in x, since spread is +x and the raw curve is
+    staircase-noisy at the 0.25 m arrival resolution.
+
+    Returns (x, tau, tau_raw, tau_lead, tau_trail, x_ignition) where tau_raw is
+    the same statistic BEFORE the monotonic pass, so the effect of that pass
+    stays auditable in the output CSV.
     """
     sel = np.abs(y_nodes) <= y_band
     band = arrival[:, sel]
@@ -222,11 +244,28 @@ def front_arrival_curve(x_nodes, y_nodes, arrival, y_band, stat="median",
         med = np.median(band_inf, axis=1)
         tau_med = np.where(np.isfinite(med), med, np.nan)
 
-    tau = tau_med if stat == "median" else tau_lead
-    valid = ~np.isnan(tau)
-    tau_mono = tau.copy()
-    tau_mono[valid] = np.maximum.accumulate(tau[valid])   # spread is +x
-    return x_nodes, tau_mono, tau_lead, tau_trail
+    if x_ignition is None:
+        x_ignition = ignition_line_x(x_nodes, tau_lead)
+
+    tau_raw = np.where(x_nodes >= x_ignition,
+                       tau_med if stat == "median" else tau_lead, np.nan)
+    valid = ~np.isnan(tau_raw)
+    tau_mono = tau_raw.copy()
+    tau_mono[valid] = np.maximum.accumulate(tau_raw[valid])   # spread is +x
+    return x_nodes, tau_mono, tau_raw, tau_lead, tau_trail, x_ignition
+
+
+def flattened_fraction(tau_raw, tau_mono, tol=0.5):
+    """Fraction of the tracked front the monotonic pass had to lift.
+
+    A healthy front is a few percent. A large value means tau(x) is dominated
+    by one late upwind arrival being smeared downwind, and every ROS derived
+    from it is meaningless -- so it is reported, not silently accepted.
+    """
+    valid = np.isfinite(tau_raw) & np.isfinite(tau_mono)
+    if not valid.any():
+        return float("nan")
+    return float(np.mean(tau_mono[valid] > tau_raw[valid] + tol))
 
 
 def crossing_time(x, tau, x_target):
@@ -504,6 +543,35 @@ def find_chid(sim_dir):
     return os.path.splitext(os.path.basename(smv[0]))[0] if smv else None
 
 
+def fds_completed(sim_dir, chid):
+    """Did FDS shut down cleanly?
+
+    The .end file is the usual marker, but a run stopped by the KILL control
+    does not always leave one, so the .out banner is checked as well. Note
+    that CATF renames the run: the outputs carry CHID_cat, which is what
+    fdsreader reports, so both spellings are tried.
+    """
+    stems = [chid]
+    if chid.endswith("_cat"):
+        stems.append(chid[:-4])
+    for stem in stems:
+        if os.path.isfile(os.path.join(sim_dir, f"{stem}.end")):
+            return True
+    for stem in stems:
+        out = os.path.join(sim_dir, f"{stem}.out")
+        if not os.path.isfile(out):
+            continue
+        try:
+            with open(out, "rb") as fh:
+                fh.seek(max(0, os.path.getsize(out) - 4096))
+                tail = fh.read().decode("utf-8", "replace")
+        except OSError:
+            continue
+        if "completed successfully" in tail or "STOP: FDS completed" in tail:
+            return True
+    return False
+
+
 def process_simulation(sim_dir, out_root, args):
     name = os.path.basename(os.path.normpath(sim_dir))
     out_dir = os.path.join(out_root, name)
@@ -512,7 +580,7 @@ def process_simulation(sim_dir, out_root, args):
 
     sim = fdsreader.Simulation(sim_dir)
     chid = sim.chid
-    completed = os.path.isfile(os.path.join(sim_dir, f"{chid}.end"))
+    completed = fds_completed(sim_dir, chid)
     print(f"  chid={chid}  FDS completed={completed}", flush=True)
 
     dx = float(np.diff(sim.meshes[0].coordinates["x"]).min())
@@ -526,9 +594,17 @@ def process_simulation(sim_dir, out_root, args):
     t_ign = ignition_time(sim_dir, chid)
     print(f"  ignition at t={t_ign:.1f} s (earlier arrivals masked)", flush=True)
     x_nodes, y_nodes, arrival = assemble_arrival_map(sim)
-    x, tau, tau_lead, tau_trail = front_arrival_curve(
+    x, tau, tau_raw, tau_lead, tau_trail, x_ign_line = front_arrival_curve(
         x_nodes, y_nodes, arrival, args.y_band, stat=args.front_stat,
-        t_min=t_ign)
+        t_min=t_ign, x_ignition=args.x_ignition)
+    flat_frac = flattened_fraction(tau_raw, tau)
+    print(f"  ignition line at x={x_ign_line:.2f} m "
+          f"(backing fire upwind of it excluded)", flush=True)
+    if np.isfinite(flat_frac) and flat_frac > 0.2:
+        print(f"  WARNING monotonic pass lifted {flat_frac:.0%} of the front — "
+              f"tau(x) is largely flat, so the ROS below is NOT trustworthy; "
+              f"inspect front_position.png and arrival_map.png",
+              file=sys.stderr)
 
     finite_tau = tau[np.isfinite(tau)]
     x_front_max = float(x[np.isfinite(tau)].max()) if finite_tau.size else float("nan")
@@ -598,8 +674,9 @@ def process_simulation(sim_dir, out_root, args):
 
     # --- per-simulation CSVs ----------------------------------------------
     write_csv(os.path.join(out_dir, "front_trajectory.csv"),
-              ["x_m", f"t_{args.front_stat}_s", "t_leading_s", "t_trailing_s"],
-              [x, tau, tau_lead, tau_trail])
+              ["x_m", f"t_{args.front_stat}_s", f"t_{args.front_stat}_raw_s",
+               "t_leading_s", "t_trailing_s"],
+              [x, tau, tau_raw, tau_lead, tau_trail])
     write_csv(os.path.join(out_dir, "ros_time.csv"),
               ["t_s", "x_front_m", "ros_m_per_s", "in_roi", "in_steady"],
               [t_ros, x_front, ros,
@@ -657,6 +734,8 @@ def process_simulation(sim_dir, out_root, args):
             "t_track_end_s": float(t_track_end),
             "x_front_max_m": x_front_max,
             "ros_bulk_roi_m_per_s": float(ros_bulk_roi),
+            "x_ignition_line_m": float(x_ign_line),
+            "front_flattened_fraction": float(flat_frac),
         },
         "windows": {w: {"t0": float(bounds[w][0]), "t1": float(bounds[w][1])}
                     for w in WINDOWS},
@@ -668,9 +747,9 @@ def process_simulation(sim_dir, out_root, args):
     # --- figures -----------------------------------------------------------
     if not args.no_figures:
         make_figures(out_dir, name, args, x, tau, tau_lead, tau_trail,
-                     x_nodes, y_nodes, arrival, t_ros, ros, x_seg, ros_seg,
-                     flame_times, flame_mean, per_slice, y_pos, bounds,
-                     ros_bulk_roi, threshold)
+                     tau_raw, x_ign_line, x_nodes, y_nodes, arrival,
+                     t_ros, ros, x_seg, ros_seg, flame_times, flame_mean,
+                     per_slice, y_pos, bounds, ros_bulk_roi, threshold)
 
     print(f"  ROI: enter {t_enter:.1f} s  exit {t_exit:.1f} s  "
           f"bulk ROS {ros_bulk_roi:.3f} m/s", flush=True)
@@ -682,9 +761,9 @@ def process_simulation(sim_dir, out_root, args):
 # ---------------------------------------------------------------------------
 
 def make_figures(out_dir, name, args, x, tau, tau_lead, tau_trail,
-                 x_nodes, y_nodes, arrival, t_ros, ros, x_seg, ros_seg,
-                 flame_times, flame_mean, per_slice, y_pos, bounds,
-                 ros_bulk_roi, threshold):
+                 tau_raw, x_ign_line, x_nodes, y_nodes, arrival,
+                 t_ros, ros, x_seg, ros_seg, flame_times, flame_mean,
+                 per_slice, y_pos, bounds, ros_bulk_roi, threshold):
     label_stat = "median" if args.front_stat == "median" else "leading-edge"
     S = plotstyle
 
@@ -695,8 +774,17 @@ def make_figures(out_dir, name, args, x, tau, tau_lead, tau_trail,
         ax.fill_betweenx(x[ok], tau_lead[ok], tau_trail[ok], alpha=0.18,
                          color=S.ACCENT, lw=0,
                          label="leading-trailing edge envelope")
+    # the raw curve alongside the monotonic one: where they separate, the
+    # monotonic pass is inventing the front rather than de-noising it
+    ax.plot(tau_raw, x, color=S.MUTED, lw=1.0, ls=":",
+            label=f"{label_stat}, before monotonic pass")
     ax.plot(tau, x, color=S.PRIMARY, lw=2,
             label=f"front position ({label_stat})")
+    if np.isfinite(x_ign_line) and abs(x_ign_line) < 1e5:
+        ax.axhline(x_ign_line, color=S.MUTED, ls="-.", lw=0.9, zorder=0)
+        ax.annotate(f"ignition line x={x_ign_line:.0f} m (backing fire below)",
+                    (0.005, x_ign_line), xycoords=("axes fraction", "data"),
+                    va="top", fontsize=7, color=S.MUTED)
     S.roi_marker(ax, ROI_X, axis="y", label_fmt="ROI x={:+.0f} m")
     for tc, xc_, txt in ((bounds["roi"][0], ROI_X[0], "enter"),
                          (bounds["roi"][1], ROI_X[1], "exit")):
@@ -815,6 +903,10 @@ def main():
                          "(default: min(200, 20/dx) per FDS UG Eq. 22.18)")
     ap.add_argument("--y-band", type=float, default=10.0,
                     help="half-width of the y band for the front (default 10 m)")
+    ap.add_argument("--x-ignition", type=float, default=None,
+                    help="x (m) of the ignition line; the backing fire upwind "
+                         "of it is excluded from the front. Default: detected "
+                         "from the earliest arrival")
     ap.add_argument("--front-stat", choices=("median", "min"), default="median",
                     help="front statistic across the y band "
                          "(median = mean fireline, min = leading edge)")

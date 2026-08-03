@@ -78,8 +78,21 @@ window`, then the scalars, then `<metric>_<stat>` for every combination of
 
 **Rate of spread.** The front comes from the cumulative `FIRE ARRIVAL TIME`
 boundary file on the ground (FDS UG Sec. 22.10.34), reduced across the
-`|y| <= 10 m` band to `tau(x)` by the median (the mean fireline, robust to
-fingering) and forced monotonic in `+x`. Two estimators:
+`|y| <= 10 m` band to `tau(x)` by the median (the mean fireline, robust to the
+scattered spot-fire nodes that make the leading edge non-monotonic) and forced
+monotonic in `+x`.
+
+Only `x >= x_ignition_line_m` is used. **The backing fire behind the igniter
+must be excluded before the monotonic pass**, not after: it spreads upwind, so
+it arrives *late* at low x, and sorted by x those points come first — one 55 s
+backing arrival will otherwise clamp the entire forward front to 55 s, giving a
+flat `tau(x)` and an apparently infinite ROS. `front_flattened_fraction` is the
+QC column for this; a healthy front is a few percent, and above ~0.2 every ROS
+in that row is meaningless. `front_trajectory.csv` also carries the statistic
+*before* the monotonic pass (`t_median_raw_s`) so the pass stays auditable, and
+`front_position.png` plots both.
+
+Two estimators:
 
 * `ros` — d/dt of the smoothed `X_front(t)`, sampled every 0.5 s with a 5 s
   smoothing window. Dense, but successive samples are correlated by that window.
@@ -149,11 +162,24 @@ python scripts/postprocess.py --root simulations --out postprocess \
     --no-figures               # tables only
 ```
 
-## Caveat
+## Sanity checks before trusting a sweep
 
-The numerics (front tracking, both ROS estimators, the flame-geometry
-extraction, the statistics and windowing) are validated against synthetic
-fields with known analytic answers. The fdsreader I/O layer —
-`assemble_arrival_map` and `assemble_slice` — could **not** be exercised
-locally, because no FDS output was on this machine when the scripts were
-written. Check the first array task's log before trusting a full sweep.
+The first real run (c4_p10, 2026-08-03) reported a bulk ROI ROS of **7.13 m/s**
+— faster than the 6 m/s driving wind, which is not possible for a wind-driven
+fire. The cause was the backing-fire/monotonic-pass interaction described
+above; the corrected value is ~1.6 m/s. Cheap checks that would have caught it,
+worth running on any new batch:
+
+* **ROS below the driving wind speed.** A surface fire cannot outrun its wind.
+* **`front_flattened_fraction` small.** It was 87 % in the synthetic
+  reproduction of that bug.
+* **`arrival_map.png` shows a colour gradient in +x**, not a single flat
+  colour across the fetch.
+* **`t_enter_roi_s` and `t_exit_roi_s` differ by more than a few seconds.**
+  The ROI is 20 m; crossing it in 2.8 s was the tell.
+
+The numerics (front tracking, backing-fire exclusion, both ROS estimators,
+flame-geometry extraction, statistics and windowing) are validated against
+synthetic fields with known analytic answers. The fdsreader I/O layer —
+`assemble_arrival_map` and `assemble_slice` — is exercised only by real runs on
+Ceres; it worked on c4_p10.

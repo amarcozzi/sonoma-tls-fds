@@ -46,6 +46,13 @@ SCALARS = [
     ("x_front_max_m", "m", "furthest downwind x the front reached"),
     ("ros_bulk_roi_m_per_s", "m/s", "20 m / (t_exit_roi - t_enter_roi); single "
                                     "chord across the ROI, no smoothing"),
+    ("x_ignition_line_m", "m", "detected ignition line; the backing fire "
+                               "upwind of it is excluded from the front"),
+    ("front_flattened_fraction", "", "QC: fraction of the front the monotonic "
+                                     "pass had to lift. A healthy front is a "
+                                     "few percent; above ~0.2 tau(x) is "
+                                     "largely flat and every ROS in the row "
+                                     "is untrustworthy"),
 ]
 
 STAT_DESC = {
@@ -227,7 +234,8 @@ def comparison_figures(records, out_root, window):
             if not s:
                 continue
             tcol = next((c for c in s if c.startswith("t_") and
-                         c not in ("t_leading_s", "t_trailing_s")), None)
+                         not c.endswith(("_raw_s", "leading_s", "trailing_s"))),
+                        None)
             if tcol is None:
                 continue
             ax.plot(s[tcol], s["x_m"], lw=1.2, alpha=0.85,
