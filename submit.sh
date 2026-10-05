@@ -8,7 +8,7 @@
 #SBATCH --mem-per-cpu=4G          # 64 x 4G = 256G
 #SBATCH -t 5-0
 #SBATCH -A umontana_fire_modeling
-#SBATCH --array=0-20%21
+#SBATCH --array=0-5%6
 #SBATCH -o logs/%a.log
 #SBATCH -e logs/%a.log
 

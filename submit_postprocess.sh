@@ -7,7 +7,7 @@
 #SBATCH --mem=32G                 # peak is one assembled HRRPUV slice (~250 MB)
 #SBATCH -t 4:00:00
 #SBATCH -A umontana_fire_modeling
-#SBATCH --array=0-20%10           # overridden by run_postprocess.sh
+#SBATCH --array=0-5%10            # overridden by run_postprocess.sh
 #SBATCH -o logs_postprocess/%a.log
 #SBATCH -e logs_postprocess/%a.log
 
