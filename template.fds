@@ -31,6 +31,18 @@
 &RAMP ID='fireramp', T=37., F=0. /
 &VENT XB=-60.5,-60,-45,45,0,0, SURF_ID='IGN FIRE' /
 
+! Gas-phase reaction (NIST vegetation model) with an auto-ignition temperature. With the default AIT
+! (-273 C) the fuel vapor that the vegetation off-gasses at ambient (Arrhenius pyrolysis has no low-T
+! cutoff) burns on contact, giving 8-90 kW of HRR before ignition. AIT=100 C stops that (UG 13.2.6).
+! The igniter is an HRRPUA burner whose fuel enters ~20 C cells, so it needs an exclusion zone over the
+! burner strip. The zone is gated by DEVC_ID (FDS ignores AIT_EXCLUSION_ZONE_CTRL_ID, fire.f90) and
+! switches on with the igniter at t=30 s, so nothing burns there during the spin-up either.
+! Tested in ambient_hrr_reproducer/mitigation_tests (AIT 100/200/300: same ignition and spread).
+&REAC FUEL='FUEL VAPOR', C=2.10, H=6.20, O=2.16, SOOT_YIELD=0.01, HEAT_OF_COMBUSTION=17425., IDEAL=T,
+      AUTO_IGNITION_TEMPERATURE=100.,
+      AIT_EXCLUSION_ZONE=-61,-59.5,-45,45,0,3, AIT_EXCLUSION_ZONE_DEVC_ID='IGN_ON' /
+&DEVC ID='IGN_ON', XYZ=0,0,1, QUANTITY='TIME', SETPOINT=30. /
+
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
 ! This surface defines the ground layer for the entire domain.
 ! It consists of a top layer of vegetation and a bottom layer of soil.
@@ -97,8 +109,10 @@
 &INIT PART_ID='wood', CELL_CENTERED=.FALSE., BULK_DENSITY_FACTOR=1.0,
       BULK_DENSITY_FILE='../../Auxiliary_Files/${wood_bdf}' /
 
-! Include the material properties for GENERIC VEGETATION from an external file
-&CATF OTHER_FILES='../../Auxiliary_Files/generic_vegetation_1R_MATL.fds'/
+! Include the material properties for GENERIC VEGETATION from an external file. This variant adds a
+! user MOISTURE MATL (high-E kinetics) so live fuel does not dry at ambient during the spin-up, and
+! leaves the REAC line to the IGNITION section above.
+&CATF OTHER_FILES='../../Auxiliary_Files/generic_vegetation_1R_MATL_highE_moisture.fds'/
 
 !! Output Variables
 ! Heat release rate per unit volume (flame location and intensity) on centerline planes
@@ -182,8 +196,18 @@
                'KILL-62','KILL-63','KILL-64','KILL-65','KILL-66','KILL-67','KILL-68','KILL-69',
                'KILL-70','KILL-71','KILL-72','KILL-73' /
 
-! Control function that activates if ANY device in either group is triggered.
-&CTRL ID='ANY_KILL_TRIGGER', FUNCTION_TYPE='ANY', INPUT_ID='KILL_GROUP_A','KILL_GROUP_B' /
+! Extinction kill: stop if the fire dies out before reaching the kill line. Domain-total HRR
+! (UG Sec 22, VOLUME INTEGRAL may span meshes), smoothed over 10 s (UG Eq. 18.10) so a brief lull
+! does not trip it. 1 MW sits well above the pre-ignition floor (0 with the AIT) and well below any spreading
+! fire (peaks are 0.3-1.8 GW). LATCH=F lets it reset if the fire recovers. Armed only after t=60 s,
+! past the igniter (30-37 s), since HRR is below the setpoint before ignition.
+&DEVC ID='HRR_LOW', XB=-80,40,-45,45,0,120, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL',
+      SETPOINT=1000., TRIP_DIRECTION=-1, LATCH=.FALSE., SMOOTHING_TIME=10. /
+&DEVC ID='EXTINCTION_ARMED', XYZ=0,0,1, QUANTITY='TIME', SETPOINT=60. /
+&CTRL ID='EXTINCTION', FUNCTION_TYPE='ALL', INPUT_ID='EXTINCTION_ARMED','HRR_LOW' /
+
+! Control function that activates if ANY device in either group is triggered, or the fire goes out.
+&CTRL ID='ANY_KILL_TRIGGER', FUNCTION_TYPE='ANY', INPUT_ID='KILL_GROUP_A','KILL_GROUP_B','EXTINCTION' /
 
 ! Master control function that terminates the simulation.
 &CTRL ID='MASTER_KILL', FUNCTION_TYPE='KILL', INPUT_ID='ANY_KILL_TRIGGER' /

@@ -1,0 +1,46 @@
+! GENERIC VEGETATION material set (NIST Douglas-fir vegetation model, unchanged) plus a user MOISTURE
+! MATL that replaces the FDS built-in one. The REAC line is NOT here: template.fds defines it, because
+! its auto-ignition exclusion zone depends on where that case's igniter is.
+!
+! MOISTURE: high-activation-energy kinetics from firemodels/fds Verification/WUI/Morvan_TGA_2.fds.
+! The built-in MOISTURE (A=6e5, E=48.2 kJ/mol, N_T=-0.5) has no humidity term and dries live fuel at
+! ambient (~0.5%/min at 20 C). These kinetics give ~6e-15 /s at 20 C, about the same rate as the
+! default at 100 C (6.6e-3 vs 5.6e-3 /s), and near-instant drying above that.
+&MATL ID='MOISTURE', DENSITY=1000., CONDUCTIVITY=0.62, SPECIFIC_HEAT=4.184,
+      SPEC_ID='WATER VAPOR', NU_SPEC=1., HEAT_OF_REACTION=2259., A=8.16E+41, E=3.15E+05 /
+
+&SPEC ID='WATER VAPOR' /
+
+&MATL ID                    = 'GENERIC VEGETATION'
+      DENSITY               = 500.
+      CONDUCTIVITY          = 0.2
+      SPECIFIC_HEAT_RAMP    = 'c_v'
+      A                     = 1040.
+      E                     = 61041.
+      NU_SPEC               = 0.75
+      SPEC_ID               = 'FUEL VAPOR'
+      NU_MATL               = 0.25
+      MATL_ID               = 'CHAR'
+      HEAT_OF_REACTION      = 418. /
+
+&MATL ID                    = 'CHAR'
+      DENSITY               = 300.
+      CONDUCTIVITY          = 0.052
+      SPECIFIC_HEAT_RAMP    = 'c_v'
+      SURFACE_OXIDATION_MODEL = T
+      A                  = 465.
+      E                  = 68000.
+      SPEC_ID               = 'PRODUCTS','AIR'
+      NU_SPEC               = 8.13,-7.17
+      MATL_ID               = 'ASH'
+      NU_MATL               = 0.04
+      HEAT_OF_REACTION      = -25000. /
+
+&MATL ID                    = 'ASH'
+      DENSITY               = 67.
+      CONDUCTIVITY          = 0.1
+      SPECIFIC_HEAT_RAMP    = 'c_v' /
+
+&RAMP ID='c_v', T=  0., F=1.1 /
+&RAMP ID='c_v', T=200., F=2.0 /
+&RAMP ID='c_v', T=800., F=2.0 /
