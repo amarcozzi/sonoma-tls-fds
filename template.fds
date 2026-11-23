@@ -2,10 +2,12 @@
 &TIME T_END=450/
 
 !! DOMAIN AND MESH
-! 120 x 90 x 120 m, 8(x) x 8(y) = 64 meshes (1 MPI rank/physical core; 60x45x64 = 173k cells/mesh, 0.25 m cubic near-ground).
-! X: -80 to +40. Ignition at x=-60 gives 50 m of fetch to the ROI (x=-10,10); 30 m of downwind clearance to XMAX.
-&MESH IJK=60,45,64, XB=-80,-65,-45,-33.75,0,120, MULT_ID='mm',TRNZ_ID='TRNZ'/
-&MULT ID='mm', DX=15,DY=11.25,I_UPPER=7,J_UPPER=7/
+! 150 x 90 x 120 m, 10(x) x 8(y) = 80 meshes (1 MPI rank/physical core; 60x45x64 = 173k cells/mesh, 0.25 m cubic near-ground).
+! X: -110 to +40. The igniter at x=-80 sits 30 m downwind of XMIN, past the ~30 m inflow/stand-edge jet, and
+! leaves 70 m for the ignition transient to decay before the ROI (x=-10,10); 30 m of downwind clearance to XMAX.
+! (Was -80 to +40 with ignition at -60: ROS was still falling across the ROI.) The canopy BDFs reach x=-113.
+&MESH IJK=60,45,64, XB=-110,-95,-45,-33.75,0,120, MULT_ID='mm',TRNZ_ID='TRNZ'/
+&MULT ID='mm', DX=15,DY=11.25,I_UPPER=9,J_UPPER=7/
 &CATF OTHER_FILES='../../Auxiliary_Files/TRN_120m.fds'/
 
 !! BOUNDARY CONDITIONS
@@ -29,7 +31,7 @@
 &RAMP ID='fireramp', T=31., F=1. /
 &RAMP ID='fireramp', T=36., F=1. /
 &RAMP ID='fireramp', T=37., F=0. /
-&VENT XB=-60.5,-60,-45,45,0,0, SURF_ID='IGN FIRE' /
+&VENT XB=-80.5,-80,-45,45,0,0, SURF_ID='IGN FIRE' /
 
 ! Gas-phase reaction (NIST vegetation model) with an auto-ignition temperature. With the default AIT
 ! (-273 C) the fuel vapor that the vegetation off-gasses at ambient (Arrhenius pyrolysis has no low-T
@@ -40,7 +42,7 @@
 ! Tested in ambient_hrr_reproducer/mitigation_tests (AIT 100/200/300: same ignition and spread).
 &REAC FUEL='FUEL VAPOR', C=2.10, H=6.20, O=2.16, SOOT_YIELD=0.01, HEAT_OF_COMBUSTION=17425., IDEAL=T,
       AUTO_IGNITION_TEMPERATURE=100.,
-      AIT_EXCLUSION_ZONE=-61,-59.5,-45,45,0,3, AIT_EXCLUSION_ZONE_DEVC_ID='IGN_ON' /
+      AIT_EXCLUSION_ZONE=-81,-79.5,-45,45,0,3, AIT_EXCLUSION_ZONE_DEVC_ID='IGN_ON' /
 &DEVC ID='IGN_ON', XYZ=0,0,1, QUANTITY='TIME', SETPOINT=30. /
 
 !! SURFACE FUEL - BOUNDARY FUEL MODEL
@@ -201,7 +203,7 @@
 ! does not trip it. 1 MW sits well above the pre-ignition floor (0 with the AIT) and well below any spreading
 ! fire (peaks are 0.3-1.8 GW). LATCH=F lets it reset if the fire recovers. Armed only after t=60 s,
 ! past the igniter (30-37 s), since HRR is below the setpoint before ignition.
-&DEVC ID='HRR_LOW', XB=-80,40,-45,45,0,120, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL',
+&DEVC ID='HRR_LOW', XB=-110,40,-45,45,0,120, QUANTITY='HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL',
       SETPOINT=1000., TRIP_DIRECTION=-1, LATCH=.FALSE., SMOOTHING_TIME=10. /
 &DEVC ID='EXTINCTION_ARMED', XYZ=0,0,1, QUANTITY='TIME', SETPOINT=60. /
 &CTRL ID='EXTINCTION', FUNCTION_TYPE='ALL', INPUT_ID='EXTINCTION_ARMED','HRR_LOW' /
