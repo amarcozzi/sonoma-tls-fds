@@ -100,6 +100,44 @@ def build_extended_cell_heights(nz, ztop, dz0, n_uniform, base_nz, base_ztop):
     return base_dz + [d * scale for d in add_dz], r * scale
 
 
+def trnz_lines_from_dz(dz, ztop, trn_id):
+    """Emit TRNZ control-point lines for an explicit list of physical cell heights.
+
+    The computational grid is uniform on [0, ztop] with `len(dz)` cells (spacing
+    ztop/nz); each interior computational face i*ztop/nz maps to the physical face
+    reached by cumulatively summing `dz`. FDS evaluates the piecewise-linear map
+    only at those uniform faces, so the physical cells it builds are exactly `dz`.
+    """
+    nz = len(dz)
+    faces = [0.0]
+    for d in dz:
+        faces.append(faces[-1] + d)
+    dz_comp = ztop / nz  # uniform computational face spacing
+    # Interior faces only (indices 1..nz-1); endpoints 0 and ztop are implicit.
+    return [
+        f"&TRNZ ID='{trn_id}', CC={i * dz_comp:19.15f}, PC={faces[i]:19.15f} /"
+        for i in range(1, nz)
+    ]
+
+
+def build_truncated_cell_heights(nz, ztop, dz0, n_uniform, target_ztop):
+    """Build the full stretched column, then keep only the cells up to the face
+    nearest `target_ztop`.
+
+    Returns (dz_trunc, ztop_eff, nz_eff) where `dz_trunc` is byte-identical to the
+    first `nz_eff` cells of the full column and `ztop_eff` is the physical height
+    of the truncation face. Because the near-ground cells are untouched, a grid
+    truncated from a master shares an exact prefix with that master -- so a
+    reduced-ceiling convergence run keeps the production fire-zone grid.
+    """
+    dz, _ = build_cell_heights(nz, ztop, dz0, n_uniform)
+    faces = [0.0]
+    for d in dz:
+        faces.append(faces[-1] + d)
+    j = min(range(1, len(faces)), key=lambda k: abs(faces[k] - target_ztop))
+    return dz[:j], faces[j], j
+
+
 def trnz_lines(nz, ztop, dz0, n_uniform, trn_id, base_nz=None, base_ztop=None):
     """Build the TRNZ control-point lines for the stretched column.
 
@@ -112,16 +150,7 @@ def trnz_lines(nz, ztop, dz0, n_uniform, trn_id, base_nz=None, base_ztop=None):
         )
     else:
         dz, ratio = build_cell_heights(nz, ztop, dz0, n_uniform)
-    faces = [0.0]
-    for d in dz:
-        faces.append(faces[-1] + d)
-    dz_comp = ztop / nz  # uniform computational face spacing
-    # Interior faces only (indices 1..nz-1); endpoints 0 and ztop are implicit.
-    lines = [
-        f"&TRNZ ID='{trn_id}', CC={i * dz_comp:19.15f}, PC={faces[i]:19.15f} /"
-        for i in range(1, nz)
-    ]
-    return lines, dz, ratio
+    return trnz_lines_from_dz(dz, ztop, trn_id), dz, ratio
 
 
 def main(argv=None):
@@ -141,6 +170,11 @@ def main(argv=None):
                         "identical across domain heights (for a ceiling study).")
     p.add_argument("--base-nz", type=int, default=None,
                    help="Cell count of the preserved base column (required with --base-ztop).")
+    p.add_argument("--truncate-to", type=float, default=None,
+                   help="Truncation mode: build the full --ztop/--nz column, then keep "
+                        "only the cells up to the face nearest this height (m). The "
+                        "result is a byte-exact prefix of the master grid -- use it to "
+                        "run a reduced-ceiling case on the production fire-zone grid.")
     p.add_argument("--output", type=Path, default=None,
                    help="Output path (default: Auxiliary_Files/TRN.fds relative to repo root).")
     args = p.parse_args(argv)
@@ -148,16 +182,28 @@ def main(argv=None):
     if (args.base_ztop is None) != (args.base_nz is None):
         print("Error: --base-ztop and --base-nz must be given together.", file=sys.stderr)
         return 1
+    if args.truncate_to is not None and args.base_nz is not None:
+        print("Error: --truncate-to cannot be combined with extend mode (--base-*).",
+              file=sys.stderr)
+        return 1
 
     if args.output is None:
         repo_root = Path(__file__).resolve().parent.parent
         args.output = repo_root / "Auxiliary_Files" / "TRN.fds"
 
     try:
-        lines, dz, ratio = trnz_lines(
-            args.nz, args.ztop, args.dz0, args.n_uniform, args.trn_id,
-            base_nz=args.base_nz, base_ztop=args.base_ztop,
-        )
+        if args.truncate_to is not None:
+            dz, eff_ztop, eff_nz = build_truncated_cell_heights(
+                args.nz, args.ztop, args.dz0, args.n_uniform, args.truncate_to,
+            )
+            lines = trnz_lines_from_dz(dz, eff_ztop, args.trn_id)
+            ratio = max(dz[i + 1] / dz[i] for i in range(len(dz) - 1))
+        else:
+            lines, dz, ratio = trnz_lines(
+                args.nz, args.ztop, args.dz0, args.n_uniform, args.trn_id,
+                base_nz=args.base_nz, base_ztop=args.base_ztop,
+            )
+            eff_ztop, eff_nz = args.ztop, args.nz
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -166,8 +212,11 @@ def main(argv=None):
     args.output.write_text("\n".join(lines) + "\n")
 
     print(f"Wrote {args.output}  ({len(lines)} TRNZ lines)")
-    print(f"  domain      : 0 - {args.ztop:g} m")
-    if args.base_nz is not None:
+    print(f"  domain      : 0 - {eff_ztop:g} m")
+    if args.truncate_to is not None:
+        print(f"  cells (nz)  : {eff_nz}   (truncated from a {args.ztop:g} m / "
+              f"{args.nz}-cell master at the face nearest {args.truncate_to:g} m)")
+    elif args.base_nz is not None:
         print(f"  cells (nz)  : {args.nz}   ({args.base_nz} preserved from a "
               f"{args.base_ztop:g} m base + {args.nz - args.base_nz} appended aloft)")
     else:
@@ -184,18 +233,18 @@ def main(argv=None):
     # on the wrong side of a face and FDS throws a *spurious* ERROR(431) "out of
     # alignment" (init.f90; tolerance ALIGNMENT_TOLERANCE=0.001). Empirically the
     # smallest cell needs >=~40 nodes; >=50 is comfortable. Rule: nz >= ztop/(12.5*dz0).
-    width = 500.0 * args.dz0 / (args.ztop / args.nz)   # nominal smallest cell
-    nz_fail = int(-(-args.ztop // (12.5 * args.dz0)))   # ceil: width >= 40
-    nz_comf = int(-(-args.ztop // (10.0 * args.dz0)))   # ceil: width >= 50
+    width = 500.0 * args.dz0 / (eff_ztop / eff_nz)     # nominal smallest cell
+    nz_fail = int(-(-eff_ztop // (12.5 * args.dz0)))    # ceil: width >= 40
+    nz_comf = int(-(-eff_ztop // (10.0 * args.dz0)))    # ceil: width >= 50
     status = "FAIL <40" if width < 40 else "fragile 40-50" if width < 50 - 1e-9 else "OK"
     print(f"  align nodes : {width:.1f} per smallest cell ({status})")
     if width < 50 - 1e-9:
-        print(f"  WARNING: to avoid spurious ERROR(431) at ztop={args.ztop:g} m with a "
+        print(f"  WARNING: to avoid spurious ERROR(431) at ztop={eff_ztop:g} m with a "
               f"{args.dz0:g} m min cell, use nz >= {nz_fail} "
               f"(comfortable nz >= {nz_comf}).", file=sys.stderr)
     print()
-    print("  Remember to set template.fds MESH consistently:")
-    print(f"    IJK = 40,40,{args.nz}   and   XB z-range = 0,{args.ztop:g}")
+    print("  Remember to set the MESH IJK 3rd value and XB z-range consistently:")
+    print(f"    nz = {eff_nz}   and   XB z-range = 0,{eff_ztop:g}")
     return 0
 
 
