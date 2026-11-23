@@ -49,6 +49,6 @@ uv run --no-sync python scripts/aggregate_metrics.py \
 
 echo "Aggregation finished with status ${STATUS}"
 echo "Tables and figures: ${OUT_DIR}"
-ls -la "${OUT_DIR}"/*.csv "${OUT_DIR}"/*.png 2>/dev/null
+ls -la "${OUT_DIR}"/*.csv "${OUT_DIR}"/*.pdf "${OUT_DIR}"/*.png 2>/dev/null
 
 exit ${STATUS}

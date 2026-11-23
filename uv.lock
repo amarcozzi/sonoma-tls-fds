@@ -746,7 +746,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fdsreader", specifier = ">=1.11.9,<1.12" },
-    { name = "matplotlib", specifier = ">=3.8" },
+    { name = "matplotlib", specifier = ">=3.11" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "scipy", specifier = ">=1.11" },
     { name = "tqdm", specifier = ">=4.66" },

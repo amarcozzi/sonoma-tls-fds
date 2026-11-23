@@ -71,9 +71,10 @@ Logs:     logs_postprocess/
 Results:  ${OUT_DIR}/metrics_summary.csv
           ${OUT_DIR}/metrics_long.csv
           ${OUT_DIR}/metrics_dictionary.csv
-          ${OUT_DIR}/comparison_*.png
+          ${OUT_DIR}/comparison_*.{pdf,png}
 
 To pull only the tables and figures back to your laptop:
-  rsync -av --include='*/' --include='*.csv' --include='*.png' --exclude='*' \\
+  rsync -av --include='*/' --include='*.csv' --include='*.json' --include='*.npz' \\
+        --include='*.pdf' --include='*.png' --exclude='*' \\
         ceres:${REPO}/${OUT_DIR}/ ./${OUT_DIR}/
 EOF

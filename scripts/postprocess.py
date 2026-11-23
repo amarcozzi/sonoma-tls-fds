@@ -16,7 +16,7 @@ What is computed
    * `ros`      - d/dt of the smoothed front position X_front(t). Dense in
                   time, but successive samples are correlated by the
                   smoothing window.
-   * `ros_seg`  - chord ROS over fixed `--segment` metre intervals of x,
+   * `ros_seg`  - ROS over fixed `--segment` metre intervals of x,
                   i.e. seg / (tau(x+seg) - tau(x)). Sparser but the samples
                   are close to independent, so its spread is the more
                   defensible measure of ROS variability.
@@ -68,16 +68,13 @@ import sys
 import traceback
 import warnings
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 
 import fdsreader
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import figures
 import plotstyle
 
 ROI_X = (-10.0, 10.0)
@@ -90,7 +87,7 @@ PERCENTILES = (2, 5, 25, 50, 75, 95, 98)
 # metric key -> (units, human description) ; drives the data dictionary
 METRICS = {
     "ros": ("m/s", "ROS from d/dt of the smoothed front position"),
-    "ros_seg": ("m/s", "chord ROS over fixed-length x segments"),
+    "ros_seg": ("m/s", "ROS over fixed-length x segments"),
     "flame_length": ("m", "base-midpoint to tip distance (tilted flame length)"),
     "flame_height": ("m", "vertical fuel bed to flame tip distance"),
     "flame_tilt": ("deg", "flame axis angle from vertical"),
@@ -305,7 +302,7 @@ def ros_timeseries(x, tau, dt=0.5, smooth_s=5.0):
 
 
 def segment_ros(x, tau, seg_len=5.0):
-    """Chord ROS over non-overlapping seg_len intervals of x.
+    """ROS over non-overlapping seg_len intervals of x.
 
     Returns (x_mid, t_mid, ros). Nearly independent samples, so this is the
     estimator to quote spread from.
@@ -603,7 +600,7 @@ def process_simulation(sim_dir, out_root, args):
     if np.isfinite(flat_frac) and flat_frac > 0.2:
         print(f"  WARNING monotonic pass lifted {flat_frac:.0%} of the front — "
               f"tau(x) is largely flat, so the ROS below is NOT trustworthy; "
-              f"inspect front_position.png and arrival_map.png",
+              f"inspect summary.png (arrival map) and front_trajectory.csv",
               file=sys.stderr)
 
     finite_tau = tau[np.isfinite(tau)]
@@ -744,149 +741,18 @@ def process_simulation(sim_dir, out_root, args):
     with open(os.path.join(out_dir, "metrics.json"), "w") as fh:
         json.dump(metrics, fh, indent=2, allow_nan=True)
 
-    # --- figures -----------------------------------------------------------
+    # the ground arrival map (~0.4 MB) so figures can be redrawn off-HPC
+    np.savez_compressed(os.path.join(out_dir, "arrival_map.npz"),
+                        x_m=x_nodes, y_m=y_nodes,
+                        arrival_s=arrival.astype(np.float32))
+
+    # --- figures (drawn from the files just written; see figures.py) -------
     if not args.no_figures:
-        make_figures(out_dir, name, args, x, tau, tau_lead, tau_trail,
-                     tau_raw, x_ign_line, x_nodes, y_nodes, arrival,
-                     t_ros, ros, x_seg, ros_seg, flame_times, flame_mean,
-                     per_slice, y_pos, bounds, ros_bulk_roi, threshold)
+        figures.per_sim(out_dir)
 
     print(f"  ROI: enter {t_enter:.1f} s  exit {t_exit:.1f} s  "
           f"bulk ROS {ros_bulk_roi:.3f} m/s", flush=True)
     return metrics
-
-
-# ---------------------------------------------------------------------------
-# per-simulation figures
-# ---------------------------------------------------------------------------
-
-def make_figures(out_dir, name, args, x, tau, tau_lead, tau_trail,
-                 tau_raw, x_ign_line, x_nodes, y_nodes, arrival,
-                 t_ros, ros, x_seg, ros_seg, flame_times, flame_mean,
-                 per_slice, y_pos, bounds, ros_bulk_roi, threshold):
-    label_stat = "median" if args.front_stat == "median" else "leading-edge"
-    S = plotstyle
-
-    # 1. front position ----------------------------------------------------
-    fig, ax = plt.subplots(figsize=(6.5, 4.2))
-    ok = np.isfinite(tau_lead) & np.isfinite(tau_trail)
-    if ok.any():
-        ax.fill_betweenx(x[ok], tau_lead[ok], tau_trail[ok], alpha=0.18,
-                         color=S.ACCENT, lw=0,
-                         label="leading-trailing edge envelope")
-    # the raw curve alongside the monotonic one: where they separate, the
-    # monotonic pass is inventing the front rather than de-noising it
-    ax.plot(tau_raw, x, color=S.MUTED, lw=1.0, ls=":",
-            label=f"{label_stat}, before monotonic pass")
-    ax.plot(tau, x, color=S.PRIMARY, lw=2,
-            label=f"front position ({label_stat})")
-    if np.isfinite(x_ign_line) and abs(x_ign_line) < 1e5:
-        ax.axhline(x_ign_line, color=S.MUTED, ls="-.", lw=0.9, zorder=0)
-        ax.annotate(f"ignition line x={x_ign_line:.0f} m (backing fire below)",
-                    (0.005, x_ign_line), xycoords=("axes fraction", "data"),
-                    va="top", fontsize=7, color=S.MUTED)
-    S.roi_marker(ax, ROI_X, axis="y", label_fmt="ROI x={:+.0f} m")
-    for tc, xc_, txt in ((bounds["roi"][0], ROI_X[0], "enter"),
-                         (bounds["roi"][1], ROI_X[1], "exit")):
-        if np.isfinite(tc):
-            ax.plot([tc], [xc_], "o", ms=5, color=S.CRITICAL,
-                    mec=S.SURFACE, mew=1.5, zorder=5)
-            ax.annotate(f"{txt} {tc:.0f} s", (tc, xc_), fontsize=8,
-                        color=S.INK_2, textcoords="offset points",
-                        xytext=(7, -3))
-    ax.set_xlabel("time (s)")
-    ax.set_ylabel("front position x (m)")
-    ax.set_title(f"{name} — fire front from FIRE ARRIVAL TIME (|y| ≤ {args.y_band:g} m)")
-    ax.legend(loc="upper left")
-    fig.savefig(os.path.join(out_dir, "front_position.png"))
-    plt.close(fig)
-
-    # 2. arrival map -------------------------------------------------------
-    fig, ax = plt.subplots(figsize=(7.0, 4.0))
-    masked = np.ma.masked_where(arrival >= UNBURNED, arrival)
-    cmap = plt.get_cmap("magma_r").copy()
-    cmap.set_bad(S.GRID)
-    im = ax.pcolormesh(x_nodes, y_nodes, masked.T, cmap=cmap, shading="auto")
-    cb = fig.colorbar(im, ax=ax, pad=0.02)
-    cb.set_label("fire arrival time (s)", color=S.INK_2)
-    cb.outline.set_visible(False)
-    for xr in ROI_X:
-        ax.axvline(xr, color=S.CRITICAL, ls="--", lw=1.0)
-    ax.axhline(-args.y_band, color=S.CRITICAL, ls=":", lw=0.9)
-    ax.axhline(args.y_band, color=S.CRITICAL, ls=":", lw=0.9)
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    ax.set_title(f"{name} — arrival map (grey = never burned; "
-                 f"dashed = ROI, dotted = front y-band)")
-    ax.grid(False)
-    fig.savefig(os.path.join(out_dir, "arrival_map.png"))
-    plt.close(fig)
-
-    # 3. ROS ---------------------------------------------------------------
-    fig, ax = plt.subplots(figsize=(6.5, 4.2))
-    if t_ros.size:
-        ax.plot(t_ros, ros, color=S.PRIMARY, lw=1.4,
-                label=f"instantaneous ({args.smooth:g} s smoothing)")
-    ax.set_xlabel("time (s)")
-    ax.set_ylabel("rate of spread (m/s)")
-    for tc, lbl in zip(bounds["roi"], ("enters ROI", "exits ROI")):
-        if np.isfinite(tc):
-            ax.axvline(tc, color=S.CRITICAL, ls="--", lw=1.0, zorder=0)
-            ax.annotate(lbl, (tc, 0.98), xycoords=("data", "axes fraction"),
-                        rotation=90, va="top", ha="right", fontsize=7,
-                        color=S.CRITICAL)
-    if np.isfinite(ros_bulk_roi):
-        ax.axhline(ros_bulk_roi, color=S.INK_2, ls=":", lw=1.1,
-                   label=f"ROI bulk ROS = {ros_bulk_roi:.3f} m/s")
-    ax.set_title(f"{name} — rate of spread ({label_stat} front)")
-    ax.legend(loc="upper left")
-    fig.savefig(os.path.join(out_dir, "ros.png"))
-    plt.close(fig)
-
-    # 4. segment ROS vs x --------------------------------------------------
-    if x_seg.size:
-        fig, ax = plt.subplots(figsize=(6.5, 3.6))
-        ax.step(x_seg, ros_seg, where="mid", color=S.PRIMARY, lw=1.6)
-        ax.plot(x_seg, ros_seg, "o", ms=4, color=S.PRIMARY,
-                mec=S.SURFACE, mew=1.2)
-        S.roi_marker(ax, ROI_X, axis="x", label_fmt="ROI x={:+.0f} m")
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("chord ROS (m/s)")
-        ax.set_title(f"{name} — ROS over {args.segment:g} m segments "
-                     f"(near-independent samples)")
-        fig.savefig(os.path.join(out_dir, "ros_segments.png"))
-        plt.close(fig)
-
-    # 5. flame geometry ----------------------------------------------------
-    if flame_times.size and per_slice:
-        fig, axes = plt.subplots(2, 1, figsize=(6.5, 6.0), sharex=True)
-        ax = axes[0]
-        for i, y in enumerate(y_pos):
-            ax.plot(flame_times, per_slice["flame_length"][i], lw=0.7,
-                    alpha=0.35, color=S.MUTED,
-                    label="individual slices" if i == 0 else None)
-        ax.plot(flame_times, flame_mean["flame_length"], color=S.PRIMARY, lw=2,
-                label="flame length $L$ (slice mean)")
-        ax.plot(flame_times, flame_mean["flame_height"], color=S.ACCENT, lw=2,
-                label="flame height $h_F$ (slice mean)")
-        ax.set_ylabel("length / height (m)")
-        ax.set_title(f"{name} — head-fire flame geometry "
-                     f"(HRRPUV ≥ {threshold:.0f} kW/m³)")
-        ax.legend(loc="upper left")
-
-        ax = axes[1]
-        ax.plot(flame_times, flame_mean["flame_tilt"], color=S.SERIES[2], lw=1.8,
-                label="tilt from vertical")
-        ax.set_ylabel("tilt (deg)")
-        ax.set_xlabel("time (s)")
-        ax.legend(loc="upper left")
-
-        for a in axes:
-            for tc, lbl in zip(bounds["roi"], ("enters ROI", "exits ROI")):
-                if np.isfinite(tc):
-                    a.axvline(tc, color=S.CRITICAL, ls="--", lw=1.0, zorder=0)
-        fig.savefig(os.path.join(out_dir, "flame_geometry.png"))
-        plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -915,7 +781,7 @@ def main():
     ap.add_argument("--smooth", type=float, default=5.0,
                     help="smoothing window (s) for the ROS derivative")
     ap.add_argument("--segment", type=float, default=2.5,
-                    help="segment length (m) for the chord ROS estimator. "
+                    help="segment length (m) for the segment ROS estimator. "
                          "2.5 m gives 8 samples across the 20 m ROI and 20 "
                          "across the default steady window; raising it trades "
                          "sample count for independence")

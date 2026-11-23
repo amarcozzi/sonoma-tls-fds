@@ -1,43 +1,35 @@
-"""Shared matplotlib styling for the sonoma-tls-fds figures.
+"""Shared matplotlib style for the sonoma-tls-fds figures.
 
-One place for the palette so per-simulation figures (postprocess.py) and the
-cross-simulation figures (aggregate_metrics.py) read as one set.
+Journal conventions: no in-figure titles (the caption carries that), lowercase
+bold panel letters, 8 pt Arial, black axes with outward ticks and no grid,
+figure widths fixed to the standard single (89 mm) and double (183 mm) column,
+vector PDF alongside a 300 dpi PNG.
 
-Palette rules followed here:
-  * Categorical hues are assigned in a fixed order and never cycled. There are
-    21 simulations, which is far past the point where hue can carry identity,
-    so simulations are NOT colour-coded individually: colour encodes the canopy
-    group (c4 / c8, two hues) and identity comes from small multiples, sorted
-    axes, and direct labels.
-  * Grid/axis furniture is recessive; text never wears a series colour.
-  * The two categorical hues pass the CVD checks against a white surface
-    (worst adjacent pair dE 24.7 protan / 32.7 tritan, 33.6 normal vision).
+Colour carries exactly one thing: the canopy group (c4 / c8), using the
+Okabe-Ito blue/vermillion pair, which stays distinguishable under all common
+colour-vision deficiencies and in greyscale. Individual simulations are
+identified by direct labels, never by hue. Annotation (ROI, reference lines)
+is drawn in greys so it never competes with the data.
 """
 
 import matplotlib as mpl
 
-# categorical slots, fixed order
-SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+# figure widths (inches)
+SINGLE = 3.5     # 89 mm
+DOUBLE = 7.2     # 183 mm
 
-PRIMARY = SERIES[0]
-ACCENT = SERIES[1]
+# Okabe-Ito
+GROUP_COLORS = {"c4": "#0072B2", "c8": "#D55E00"}
+NEUTRAL = "#000000"
 
-# status / annotation
-CRITICAL = "#d03b3b"   # ROI markers, extinction flags
-GOOD = "#0ca30c"
-
-# ink + furniture
-INK = "#0b0b0b"
-INK_2 = "#52514e"
-MUTED = "#898781"
-GRID = "#e1e0d9"
-AXIS = "#c3c2b7"
-SURFACE = "#ffffff"
-
-GROUP_COLORS = {"c4": SERIES[0], "c8": SERIES[1]}
+INK = "#000000"
+INK_2 = "#4d4d4d"     # secondary text, reference lines
+MUTED = "#8c8c8c"
+REGION = "#ebebeb"    # ROI shading
+UNBURNED = "#d9d9d9"  # never-burned cells on the arrival map
 
 
-def group_color(group, default=MUTED):
+def group_color(group, default=NEUTRAL):
     """Colour for a canopy group label ('c4', 'c8', ...)."""
     return GROUP_COLORS.get(group, default)
 
@@ -45,49 +37,63 @@ def group_color(group, default=MUTED):
 def apply():
     """Install the house style. Call once, after matplotlib.use('Agg')."""
     mpl.rcParams.update({
-        "figure.facecolor": SURFACE,
-        "axes.facecolor": SURFACE,
-        "savefig.facecolor": SURFACE,
-        "savefig.bbox": "tight",
-        "figure.dpi": 160,
-        "font.size": 9,
-        "axes.titlesize": 10,
-        "axes.labelsize": 9,
-        "axes.labelcolor": INK_2,
-        "axes.titlecolor": INK,
-        "axes.edgecolor": AXIS,
-        "axes.linewidth": 0.8,
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+        "mathtext.fontset": "custom",
+        "mathtext.rm": "Arial",
+        "mathtext.it": "Arial:italic",
+        "mathtext.bf": "Arial:bold",
+        "font.size": 8,
+        "axes.labelsize": 8,
+        "axes.titlesize": 8,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "legend.fontsize": 7,
+        "text.color": INK,
+        "axes.labelcolor": INK,
+        "axes.edgecolor": INK,
+        "axes.linewidth": 0.6,
         "axes.spines.top": False,
         "axes.spines.right": False,
-        "axes.grid": True,
-        "axes.prop_cycle": mpl.cycler(color=SERIES),
-        "grid.color": GRID,
-        "grid.linewidth": 0.6,
-        "xtick.color": MUTED,
-        "ytick.color": MUTED,
-        "xtick.labelcolor": INK_2,
-        "ytick.labelcolor": INK_2,
+        "axes.grid": False,
+        "axes.axisbelow": True,
+        "axes.labelpad": 3,
+        "xtick.color": INK,
+        "ytick.color": INK,
         "xtick.direction": "out",
         "ytick.direction": "out",
+        "xtick.major.size": 3,
+        "ytick.major.size": 3,
+        "xtick.major.width": 0.6,
+        "ytick.major.width": 0.6,
+        "xtick.major.pad": 2,
+        "ytick.major.pad": 2,
+        "lines.linewidth": 1.0,
+        "lines.solid_capstyle": "butt",
+        "patch.linewidth": 0.6,
         "legend.frameon": False,
-        "legend.fontsize": 8,
-        "lines.linewidth": 1.6,
-        "lines.solid_capstyle": "round",
+        "legend.handlelength": 1.8,
+        "legend.borderaxespad": 0.3,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "savefig.facecolor": "white",
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.02,
+        "pdf.fonttype": 42,     # editable text in Illustrator/Inkscape
+        "ps.fonttype": 42,
+        "svg.fonttype": "none",
     })
 
 
-def roi_marker(ax, positions, axis="y", label_fmt=None):
-    """Draw the recessive dashed ROI bounds without stealing the legend."""
-    for pos in positions:
-        line = ax.axhline if axis == "y" else ax.axvline
-        line(pos, color=CRITICAL, ls="--", lw=1.0, alpha=0.8, zorder=0)
-        if label_fmt:
-            if axis == "y":
-                ax.annotate(label_fmt.format(pos), (0.005, pos),
-                            xycoords=("axes fraction", "data"), va="bottom",
-                            fontsize=7, color=CRITICAL)
-            else:
-                ax.annotate(label_fmt.format(pos), (pos, 0.99),
-                            xycoords=("data", "axes fraction"), va="top",
-                            ha="right", rotation=90, fontsize=7,
-                            color=CRITICAL)
+def panel_label(ax, letter, x=-0.02, y=1.0):
+    """Bold lowercase panel letter just outside the top-left of the axes."""
+    ax.text(x, y, letter, transform=ax.transAxes, fontsize=9,
+            fontweight="bold", ha="right", va="bottom")
+
+
+def save(fig, stem):
+    """Write <stem>.pdf (vector) and <stem>.png (300 dpi)."""
+    fig.savefig(f"{stem}.pdf")
+    fig.savefig(f"{stem}.png")
