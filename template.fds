@@ -68,10 +68,11 @@
 
 
 !! CANOPY - PARTICLE MODEL
-! Two Lagrangian particle classes, each initialized from its own bulk density file (UG Sec 17.2.2:
-! "one file may specify the spatial distribution of foliage, another for branches"). Values in the
-! files are DRY bulk density; FDS sets DRY=T automatically and adds moisture per the class SURF.
-! Foliage and wood voxels overlap; each class places its own particle in a shared cell.
+! Foliage only, initialized from the foliage bulk density file (UG Sec 17.2.2). Values in the file are
+! DRY bulk density; FDS sets DRY=T automatically and adds moisture per the class SURF.
+! Wood is left out: Elliott's *_wood.bdf is whole-tree wood (stems + branches, ~12x foliage) and the
+! segmentation cannot separate fine branchwood, so modelling it as 4.5 mm twigs overstated its area ~3x
+! foliage and cut the time step 2.4x (static-particle drag limit, part.f90).
 
 ! Surface properties for foliage particles (Douglas-fir needles)
 &SURF ID                        = 'foliage'
@@ -90,26 +91,6 @@
 
 ! Initialization of foliage particles from a bulk density file
 &INIT PART_ID='foliage', CELL_CENTERED=.FALSE., BULK_DENSITY_FILE='../../Auxiliary_Files/${foliage_bdf}' /
-
-! Surface properties for wood particles (Douglas-fir fine branchwood).
-! SAVR/LENGTH/Cd follow the 'medium roundwood' class (3-6 mm, sigma=4/d -> d=4.5 mm) of the NIST
-! Douglas-fir validation case, firemodels/fds Validation/NIST_Douglas_Firs/FDS_Input_Files/tree_5_m_26_pc.fds
-! (same GENERIC VEGETATION MATL as our CATF). Live branchwood moisture (dry basis); the NIST trees
-! were dried (MC 0.14-0.49) so their value is not used here.
-&SURF ID                        = 'wood'
-      MATL_ID                   = 'GENERIC VEGETATION'
-      MATL_MASS_FRACTION        = 1.0
-      MOISTURE_CONTENT          = 0.90
-      SURFACE_VOLUME_RATIO      = 888.
-      LENGTH                    = 0.10
-      GEOMETRY                  = 'CYLINDRICAL' /
-
-! Particle class definition for wood elements
-&PART ID='wood', DRAG_COEFFICIENT=2.8, SAMPLING_FACTOR=1, SURF_ID='wood', STATIC=.TRUE., COLOR='BROWN' /
-
-! Initialization of wood particles from a bulk density file.
-&INIT PART_ID='wood', CELL_CENTERED=.FALSE., BULK_DENSITY_FACTOR=1.0,
-      BULK_DENSITY_FILE='../../Auxiliary_Files/${wood_bdf}' /
 
 ! Include the material properties for GENERIC VEGETATION from an external file. This variant adds a
 ! user MOISTURE MATL (high-E kinetics) so live fuel does not dry at ambient during the spin-up, and
@@ -176,7 +157,7 @@
 &BNDF QUANTITY='FIRE ARRIVAL TIME' /
 &BNDF QUANTITY='TOTAL HEAT FLUX' /
 
-! Canopy budget by particle class (foliage vs wood). Solid-phase quantities with PART_ID and
+! Canopy (foliage) heat and moisture budget. Solid-phase quantities with PART_ID and
 ! SPATIAL_STATISTIC='SURFACE INTEGRAL' sum flux x particle area x weight over every particle of that
 ! class inside XB (dump.f90 PARTICLE_LOOP), so each device is a class total in kW or kg/s:
 !   *_Q*   heat absorbed from the gas (sink); TOTAL = RADIATIVE + CONVECTIVE
@@ -190,19 +171,9 @@
 &DEVC ID='F_FUEL_D', QUANTITY='MASS FLUX', SPEC_ID='FUEL VAPOR',  PART_ID='foliage', SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
 &DEVC ID='F_PROD_D', QUANTITY='MASS FLUX', SPEC_ID='PRODUCTS',    PART_ID='foliage', SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
 &DEVC ID='F_AREA_D', QUANTITY='WALL TEMPERATURE',      PART_ID='foliage', SPATIAL_STATISTIC='SURFACE AREA',     XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_QTOT_D', QUANTITY='TOTAL HEAT FLUX',       PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_QRAD_D', QUANTITY='RADIATIVE HEAT FLUX',   PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_QCON_D', QUANTITY='CONVECTIVE HEAT FLUX',  PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_H2O_D',  QUANTITY='MASS FLUX', SPEC_ID='WATER VAPOR', PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_FUEL_D', QUANTITY='MASS FLUX', SPEC_ID='FUEL VAPOR',  PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_PROD_D', QUANTITY='MASS FLUX', SPEC_ID='PRODUCTS',    PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-110,40,-45,45,0,120 /
-&DEVC ID='W_AREA_D', QUANTITY='WALL TEMPERATURE',      PART_ID='wood',    SPATIAL_STATISTIC='SURFACE AREA',     XB=-110,40,-45,45,0,120 /
 &DEVC ID='F_QTOT_R', QUANTITY='TOTAL HEAT FLUX',       PART_ID='foliage', SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-10,10,-10,10,0,120 /
 &DEVC ID='F_H2O_R',  QUANTITY='MASS FLUX', SPEC_ID='WATER VAPOR', PART_ID='foliage', SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-10,10,-10,10,0,120 /
 &DEVC ID='F_FUEL_R', QUANTITY='MASS FLUX', SPEC_ID='FUEL VAPOR',  PART_ID='foliage', SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-10,10,-10,10,0,120 /
-&DEVC ID='W_QTOT_R', QUANTITY='TOTAL HEAT FLUX',       PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-10,10,-10,10,0,120 /
-&DEVC ID='W_H2O_R',  QUANTITY='MASS FLUX', SPEC_ID='WATER VAPOR', PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-10,10,-10,10,0,120 /
-&DEVC ID='W_FUEL_R', QUANTITY='MASS FLUX', SPEC_ID='FUEL VAPOR',  PART_ID='wood',    SPATIAL_STATISTIC='SURFACE INTEGRAL', XB=-10,10,-10,10,0,120 /
 
 !! Simulation Control
 ! Kill-switch array (UG Sec 22.2.5, linear device array): 73 ground heat-flux devices spaced 1.25 m
